@@ -1,5 +1,14 @@
 # Album and virtual tour publishing on GitHub Pages
 
+Repository: **Randznr/RayonStudio**, branch: **main**.
+
+- Website: https://randznr.github.io/RayonStudio/
+- Album uploads: https://randznr.github.io/RayonStudio/admin.html
+- Tour uploads and editing: https://randznr.github.io/RayonStudio/tour-admin.html
+- Public sample: https://randznr.github.io/RayonStudio/tours/sample.html
+
+Both admin pages have the repository and branch filled in. Create a fine-grained GitHub token for **Randznr/RayonStudio** only, grant **Contents: Read and write**, and enter it in the admin sign-in form. Never commit the token. Always upload the complete website folder tree: the **tours**, **assets**, and **Images** folders are required.
+
 Visitors use `albums.html`. You use `admin.html` to create albums, add images, rename albums, remove images, and publish. There is no admin link in the visitor navigation.
 
 ## First-time setup
@@ -25,7 +34,7 @@ The previous version kept albums in IndexedDB, on one browser and one site addre
 
 ## Validation and hosting
 
-No GitHub credentials are included in these files. The repository is not yet connected or deployed. Use a public repository for a standard GitHub Pages setup; the admin image previews use GitHub's public raw image URLs. Keep the website files at the publishing branch root.
+No GitHub credentials are included in these files. The admin forms are configured for Randznr/RayonStudio on main. Use a public repository for a standard GitHub Pages setup; the admin image previews use GitHub's public raw image URLs. Keep the website files at the publishing branch root.
 
 References: [GitHub Pages publishing sources](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), [fine-grained token permissions](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens).
 
