@@ -1,0 +1,30 @@
+/* Follow the same system preference as the light/dark logo. */
+:root{color-scheme:light;--paper:#fff;--plaster:#fff;--surface:#f1f4f1;--ink:#1d1e1d;--muted:#68716d;--line:#d7ddd7}
+html,body{background:var(--paper);color:var(--ink)}
+.site-header,header.header{background:var(--paper);color:var(--ink);border-color:var(--line)}
+a.site-brand,a.site-brand:hover{color:var(--ink)}
+.site-header #navigation .contact-link{border-color:var(--ink)}
+.admin-main input,.admin-main select,#tour-workspace input,#tour-workspace select,#tour-login input{background:var(--paper);color:var(--ink);border-color:var(--line)}
+@media(max-width:650px){.site-header #navigation{background:var(--paper);border-color:var(--line)}}
+@media(prefers-color-scheme:dark){
+  :root{color-scheme:dark;--paper:#151917;--plaster:#151917;--surface:#222a26;--ink:#eef2ee;--ink-soft:#c4cec7;--muted:#b3bfb7;--line:#3b4740;--line-strong:#526259;--plaster-deep:#303c34;--sage-dark:#a2c4be;--rust:#f1a58c}
+  .studio,.tour-feature,.card,.client,#tour-share,.admin-photo,.hotspot-panel{background:var(--surface);border-color:var(--line)}
+  .services span,footer,.help,.filters{border-color:var(--line)}
+  .tour-callout{background:#0c100e;color:var(--ink)}
+  .tour-callout em,em,.eyebrow,.tag,.qr-icon{color:#a2c4be}
+  .button,.album-action,.album-card:not(.public-album-card){background:#a2c4be;color:#17231d}
+  .button:hover{background:#bed7cf;color:#17231d}
+  .public-album-card{background:transparent;color:var(--ink)}
+  .filters button{color:var(--muted)}.filters button.active{color:var(--ink)}
+  nav a:hover,nav a[aria-current],.site-header #navigation a:hover,.site-header #navigation a[aria-current]{color:#a2c4be}
+  .contact-placeholder{color:var(--muted);border-color:var(--line)}
+  .tone-one,.tone-two,.tone-three,.tone-four,.gallery-tile,.hero-art:not(.hero-photo),.sample-art{background:#303e35}
+  .tour-cover{background:linear-gradient(130deg,#24392e,#35483c)}
+  .slot-label,.art-caption,.tour-rings span{color:#c5d9cc}
+  .sample-art:before{background:linear-gradient(130deg,#314b3c,#526656);border-color:#829f8d}
+  .sample-art span{background:#17231d;color:#eef2ee}
+  .round-link{border-color:var(--line-strong)}
+  .btn.primary{color:#17231d}.btn.primary:hover{background:#bed7cf}
+  .swatch .nm input{background:var(--surface);color:var(--ink)}
+  .scene-label,.swatch .idx,.swatch .del{color:#fff}
+}
