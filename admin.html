@@ -18,7 +18,7 @@
     <form id="login" class="admin-panel">
       <h2>Connect your GitHub repository</h2>
       <p>Use a GitHub access token as your admin password. It stays in memory until you sign out or close this page.</p>
-      <label>Repository <input id="repository" placeholder="your-username/your-repository" required autocomplete="off" pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"></label>
+      <label>Repository <input id="repository" value="Randznr/RayonStudio" required autocomplete="off" pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"></label>
       <label>Publishing branch <input id="branch" value="main" required autocomplete="off"></label>
       <label>GitHub access token <input id="token" type="password" required autocomplete="off" spellcheck="false"></label>
       <p class="admin-help">Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">fine-grained token</a> for this repository only, with <strong>Contents: Read and write</strong>. Your website files must be at the root of the publishing branch.</p>
