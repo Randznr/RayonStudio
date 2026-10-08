@@ -1,0 +1,1953 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex,nofollow"><script>if(window.parent===window)location.replace("tour-admin.html");</script><script src="tour-data.js"></script><script src="tour-format.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Rayon Studio — 360° walkthroughs for interior staging</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,440;9..144,560;9..144,650&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="assets/vendor/three.min.js"></script>
+<style>
+  :root{
+    --ink:#221f1a;
+    --ink-soft:#4b453c;
+    --plaster:#f4f3f2;
+    --plaster-deep:#ddd5c3;
+    --paper:#faf7f1;
+    --sage:#A0C2BC;
+    --sage-dark:#485338;
+    --brass:#b08a4e;
+    --brass-deep:#8f6d38;
+    --rust:#9c4a2e;
+    --line: rgba(34,31,26,0.14);
+    --line-strong: rgba(34,31,26,0.28);
+    --shadow: 0 10px 30px rgba(34,31,26,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--plaster);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  ::selection{ background: var(--sage); color: var(--paper); }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 22px; }
+
+  /* ---------- header ---------- */
+  header.top{
+    padding:10px 0 10px;
+    border-bottom:3px solid var(--line);
+  }
+  .top-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+  .wordmark{
+    font-family:'Gothic', serif;
+    font-weight:560;
+    font-style:Bold;
+    font-size:18px;
+    letter-spacing:-0.02em;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .brand-logo{
+    width:100px;
+    height:auto;
+    display:block;
+    border-radius:6px;
+    object-fit:contain;
+  }
+  .wordmark small{
+    font-family:'Space Mono', monospace;
+    font-style:normal;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--sage-dark);
+    padding:4px 8px;
+    border-radius:2px;
+  }
+  .tagline{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    max-width:360px;
+    text-align:right;
+    line-height:1.5;
+  }
+
+  /* ---------- toolbar ---------- */
+  .toolbar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    padding:16px 0;
+  }
+  .btn{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    border:1px solid var(--line-strong);
+    background:var(--paper);
+    color:var(--ink);
+    padding:10px 16px;
+    border-radius:3px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .btn:hover{ box-shadow:var(--shadow); transform:translateY(-1px); }
+  .btn:active{ transform:translateY(0); }
+  .btn.primary{ background:var(--sage); border-color:var(--sage); color:var(--paper); }
+  .btn.primary:hover{ background:var(--sage-dark); }
+  .btn.ghost{ background:transparent; }
+  .btn.on{ background:var(--ink); border-color:var(--ink); color:var(--paper); }
+  .btn.danger{ color:var(--rust); border-color:var(--rust); background:transparent; }
+  .btn[disabled]{ opacity:.4; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+  .spacer{ flex:1; }
+  .hint{ font-size:12px; color:var(--ink-soft); font-family:'Space Mono',monospace; }
+
+  /* ---------- viewer ---------- */
+  .viewer-shell{
+    position:relative;
+    width:100%;
+    aspect-ratio: 16/9;
+    background:var(--ink);
+    border-radius:4px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  #panoCanvas{ width:100%; height:100%; display:block; cursor:grab; }
+  #panoCanvas.dragging{ cursor:grabbing; }
+
+  .empty-state{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px; text-align:center; padding:30px;
+    background:
+      linear-gradient(160deg, #2b2721, #1a1815);
+    color:var(--plaster);
+  }
+  .empty-state .es-eyebrow{
+    font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--brass);
+  }
+  .empty-state h2{ font-family:'Fraunces',serif; font-weight:500; font-size:26px; margin:0; max-width:420px; }
+  .empty-state p{ font-size:13.5px; color:rgba(232,226,212,0.7); max-width:360px; margin:0; }
+
+  .scene-label{
+    position:absolute; bottom:14px; left:6px;
+    font-family:'Fraunces',serif; font-style:italic; font-weight:500;
+    font-size:17px; color:var(--paper);
+    padding:6px 12px; border-radius:2px;
+    backdrop-filter:blur(2px);
+    pointer-events:none;
+  }
+
+  .zoom-hint{
+    position:absolute; bottom:6px; left:14px;
+    font-family:'Space Mono',monospace; font-size:8px; letter-spacing:.06em;
+    color:rgba(232,226,212,0.65);
+    pointer-events:none;
+  }
+
+  /* hotspot markers */
+  .hotspot{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    width:30px; height:30px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    border:1px solid rgba(255,255,255,0.35);
+    background:rgba(255,255,255,0.12);
+    box-shadow:0 3px 10px rgba(0,0,0,0.4);
+    transition:transform .12s ease, background .12s ease;
+    z-index:10;
+  }
+  .hotspot:hover{ transform:translate(-50%,-50%) scale(1.18); }
+  .hotspot.note{ background:rgba(176,138,78,0.25); border-color:rgba(255,255,255,0.35); }
+  .hotspot.link{ background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.45); }
+  .hotspot::after{
+    content:'';
+    width:16px;
+    height:16px;
+    display:block;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='rgba(255,255,255,0.5)' d='M7.5 3c-1.07 0-2 .9-2 2s.93 2 2 2 2-.9 2-2-.93-2-2-2zm6.5 0c-1.07 0-2 .9-2 2s.93 2 2 2 2-.9 2-2-.93-2-2-2zM7 8c-1.66 0-3 1.34-3 3 0 1.67 1.34 3 3 3h1c.55 0 1-.45 1-1v-1c0-1.1-.9-2-2-2H7zm6 0c-1.1 0-2 .9-2 2v1c0 .55.45 1 1 1h1c1.66 0 3-1.33 3-3 0-1.66-1.34-3-3-3zm-6 7c-1.1 0-2 .9-2 2s.9 2 2 2h2c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2H7zm6 0c-1.1 0-2 .9-2 2s.9 2 2 2h2c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2h-2z'/%3E%3C/svg%3E");
+    background-size:contain;
+    background-repeat:no-repeat;
+    opacity:0.9;
+  }
+
+  /* ---------- swatch strip ---------- */
+  .strip-wrapper { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+  .strip-header { display: flex; align-items: center; justify-content: space-between; margin: 22px 2px 10px; }
+  .strip-label{
+    font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin: 0;
+  }
+  .strip{
+    display:flex; gap:14px; overflow-x:auto; padding:4px 2px 18px;
+    scrollbar-width:thin;
+  }
+  .strip::-webkit-scrollbar{ height:6px; }
+  .strip::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:3px; }
+
+  .swatch{
+    position:relative;
+    flex:0 0 158px;
+    height:118px;
+    background:var(--paper);
+    border:1px solid var(--line-strong);
+    clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+    cursor:pointer;
+    overflow:hidden;
+    transition:transform .16s ease, box-shadow .16s ease;
+  }
+  .swatch:hover{ transform:translateY(-3px); box-shadow:0 8px 16px rgba(34,31,26,0.18); }
+  .swatch.active{ transform:translateY(-7px); box-shadow:var(--shadow); border-color:var(--ink); }
+  .swatch img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.88; }
+  .swatch .fold{
+    position:absolute; top:0; right:0; width:20px; height:20px;
+    background:linear-gradient(135deg, rgba(0,0,0,0) 50%, rgba(34,31,26,0.35) 50%);
+  }
+  .swatch .idx{
+    position:absolute; top:8px; left:9px;
+    font-family:'Space Mono',monospace; font-size:11px; font-weight:700;
+    color:var(--paper); background:rgba(34,31,26,0.55);
+    padding:2px 6px; border-radius:2px; letter-spacing:.04em;
+  }
+  .swatch .nm{
+    position:absolute; left:9px; right:9px; bottom:8px;
+    font-family:'Fraunces',serif; font-weight:560; font-size:14px; color:var(--paper);
+    text-shadow:0 2px 8px rgba(0,0,0,0.55);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .swatch .nm input{
+    font-family:'Fraunces',serif; font-weight:560; font-size:14px;
+    width:100%; background:rgba(250,247,241,0.94); color:var(--ink);
+    border:none; border-radius:2px; padding:3px 5px; text-shadow:none;
+  }
+  .swatch .del{
+    position:absolute; top:6px; right:24px;
+    width:18px; height:18px; border-radius:50%;
+    background:rgba(34,31,26,0.55); color:var(--paper);
+    font-size:12px; line-height:18px; text-align:center;
+    opacity:0; transition:opacity .12s ease;
+  }
+  .swatch:hover .del{ opacity:1; }
+
+  .swatch.add{
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px;
+    background:transparent; border:1px dashed var(--line-strong); clip-path:none;
+    color:var(--ink-soft); font-size:12px; font-family:'Space Mono',monospace;
+  }
+  .swatch.add:hover{ border-color:var(--ink); color:var(--ink); }
+  .swatch.add .plus{ font-size:22px; font-family:'Fraunces',serif; line-height:1; }
+
+  .hotspot-panel{
+    margin:18px 0 0;
+    padding:16px 18px;
+    border:1px solid var(--line-strong);
+    border-radius:6px;
+    background:rgba(250,247,241,0.75);
+    color:var(--ink);
+  }
+  .hotspot-panel-header{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;
+    font-family:'Space Mono',monospace; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .hotspot-list{
+    display:grid; gap:10px;
+  }
+  .hotspot-item{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:12px 14px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+  }
+  .hotspot-item .meta{
+    display:flex; align-items:center; gap:10px;
+    font-size:13px;
+  }
+  .hotspot-item .meta .tag{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; border-radius:50%; background:rgba(34,31,26,0.06);
+    font-size:14px; color:rgba(34,31,26,0.7);
+  }
+  .hotspot-item .name{font-weight:600;}
+  .hotspot-item .actions{display:flex; gap:8px;}
+
+  /* ---------- footer note ---------- */
+  .footnote{
+    border-top:1px solid var(--line);
+    padding:18px 0 40px;
+    font-size:12.5px; color:var(--ink-soft); line-height:1.6;
+  }
+  .footnote b{ color:var(--ink); }
+
+  /* ---------- modal ---------- */
+  .backdrop{
+    position:fixed; inset:0; background:rgba(34,31,26,0.5);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:20px;
+    backdrop-filter:blur(2px);
+  }
+  .backdrop.show{ display:flex; }
+  .modal{
+    background:var(--paper); width:100%; max-width:380px;
+    border-radius:5px; box-shadow:var(--shadow); padding:22px;
+    border-top:3px solid var(--sage);
+  }
+  .modal h3{ font-family:'Fraunces',serif; font-weight:560; font-size:19px; margin:0 0 4px; }
+  .modal .sub{ font-size:12.5px; color:var(--ink-soft); margin-bottom:16px; }
+  .field{ margin-bottom:13px; }
+  .field label{ display:block; font-size:11.5px; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:5px; }
+  .field input[type=text], .field textarea, .field select{
+    width:100%; font-family:'Inter',sans-serif; font-size:13.5px; padding:9px 10px;
+    border:1px solid var(--line-strong); border-radius:3px; background:var(--paper); color:var(--ink);
+  }
+  .field textarea{ resize:vertical; min-height:64px; }
+  .type-toggle{ display:flex; gap:8px; margin-bottom:14px; }
+  .type-toggle button{
+    flex:1; padding:9px; font-size:12.5px; font-weight:600; border:1px solid var(--line-strong);
+    background:var(--paper); border-radius:3px; cursor:pointer; color:var(--ink-soft);
+  }
+  .type-toggle button.sel{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .modal-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:16px; gap:8px; }
+
+  .popover{
+    position:absolute; max-width:220px; z-index:20;
+    background:var(--paper); border-radius:4px; box-shadow:var(--shadow);
+    padding:12px 14px; border-left:3px solid var(--brass);
+    font-size:12.5px; line-height:1.5;
+  }
+  .popover h4{ margin:0 0 4px; font-family:'Fraunces',serif; font-size:14.5px; font-weight:560; }
+  .popover .close{ position:absolute; top:6px; right:8px; cursor:pointer; color:var(--ink-soft); font-size:13px; }
+
+  @media (max-width: 640px){
+    .tagline{ display:none; }
+    .swatch{ flex:0 0 128px; height:100px; }
+  }
+
+  /* ---------- minimap overlay ---------- */
+  .minimap{
+    position:absolute; z-index:15;
+    width:150px; height:150px;
+    top:14px; right:14px;
+    overflow:hidden;
+    backdrop-filter:blur(2px);
+    transition:width .18s ease, height .18s ease;
+  }
+  .minimap.expanded{ width:280px; height:280px; }
+  .minimap.hidden-map{ display:none; }
+  .minimap .mm-inner{ position:absolute; inset:0; }
+  .minimap .mm-empty{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:rgba(250,247,241,0.55); font-family:'Space Mono',monospace; font-size:9.5px;
+    text-align:center; padding:10px; line-height:1.5; text-transform:uppercase; letter-spacing:.05em;
+  }
+  .minimap img.mm-plan{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:.92; }
+  .minimap .mm-pin{
+    position:absolute; width:11px; height:11px; border-radius:50%;
+    background:var(--brass); border:1.5px solid var(--paper);
+    transform:translate(-50%,-50%); cursor:pointer; z-index:2;
+  }
+  .minimap .mm-pin.current{ background:var(--sage); width:13px; height:13px; box-shadow:0 0 0 4px rgba(95,110,79,0.35); }
+  .minimap .mm-cone{
+    position:absolute; width:0; height:0; z-index:1;
+    border-left:9px solid transparent;
+    border-right:9px solid transparent;
+    border-bottom:24px solid #ffffff;
+    filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    transform-origin:50% 100%; pointer-events:none;
+    opacity:1;
+  }
+  .minimap .mm-toggle{
+    position:absolute; bottom:5px; right:5px; z-index:3;
+    width:20px; height:20px; border-radius:3px;
+    background:rgba(250,247,241,0.15); color:var(--paper);
+    display:flex; align-items:center; justify-content:center; font-size:11px; cursor:pointer;
+  }
+  .minimap .mm-toggle:hover{ background:rgba(250,247,241,0.28); }
+  .mm-hide-btn{
+    position:absolute; z-index:15; top:14px; right:14px;
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    background:rgba(34,31,26,0.55); color:var(--paper); border:1px solid rgba(250,247,241,0.3);
+    border-radius:3px; padding:5px 8px; cursor:pointer; display:none;
+  }
+
+  /* ---------- branding overlay ---------- */
+  .branding-overlay{
+    position:absolute; z-index:16; pointer-events:none;
+    max-width:34%; max-height:22%; object-fit:contain;
+  }
+  .branding-overlay.pos-top-left{ top:14px; left:14px; }
+  .branding-overlay.pos-top-right{ top:14px; right:14px; }
+  .branding-overlay.pos-bottom-left{ bottom:14px; left:14px; }
+  .branding-overlay.pos-bottom-right{ bottom:14px; right:14px; }
+  .branding-overlay.hide-branding{ display:none; }
+
+  /* ---------- map editor modal ---------- */
+  .modal.wide{ max-width:560px; }
+  .plan-drop{
+    border:1px dashed var(--line-strong); border-radius:4px; padding:26px 14px;
+    text-align:center; cursor:pointer; color:var(--ink-soft); font-size:12.5px;
+  }
+  .plan-drop:hover{ border-color:var(--ink); color:var(--ink); }
+  .plan-editor{
+    position:relative; width:100%; aspect-ratio:4/3; background:var(--ink);
+    border-radius:4px; overflow:hidden; margin-top:6px;
+  }
+  .plan-editor img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .plan-pin{
+    position:absolute; width:26px; height:26px; transform:translate(-50%,-50%);
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%; background:var(--brass); border:2px solid var(--paper);
+    color:var(--paper); font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+    cursor:grab; box-shadow:0 3px 8px rgba(0,0,0,.4);
+    opacity: 0.9;
+  }
+  .plan-cone {
+    position: absolute;
+    width: 0; height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 24px solid #ffffff;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    top: -24px; 
+    left: 4px;
+    transform-origin: 9px 37px; 
+    pointer-events: none;
+    opacity: 1;
+  }
+  .plan-pin.sel{ background:var(--sage); }
+  .plan-hint{ font-size:11.5px; color:var(--ink-soft); margin-top:8px; line-height:1.5; }
+  .rotate-row{ display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .rotate-row button{ padding:7px 12px; }
+  .unplaced-list{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .unplaced-chip{
+    font-family:'Space Mono',monospace; font-size:11px; padding:6px 10px; border-radius:3px;
+    background:rgba(156,74,46,0.12); color:var(--rust); border:1px solid rgba(156,74,46,0.3);
+  }
+
+  /* ---------- branding modal ---------- */
+  .brand-preview{
+    width:100%; height:90px; border-radius:4px; background:var(--ink);
+    position:relative; overflow:hidden; margin-bottom:14px;
+  }
+  .brand-preview img{ position:absolute; max-width:34%; max-height:60%; object-fit:contain; }
+  .slider-row{ display:flex; align-items:center; gap:10px; }
+  .slider-row input[type=range]{ flex:1; }
+  .slider-row span{ font-family:'Space Mono',monospace; font-size:11px; width:38px; text-align:right; }
+
+  /* ---------- client preview mode ---------- */
+  body.client-preview { overflow: hidden; }
+  body.client-preview .editor-only{ display:none !important; }
+  body.client-preview header .tagline{ display:block; }
+  body.client-preview .mm-hide-btn{ display:none !important; }
+  body.client-preview .swatch .del{ display:none !important; }
+  body.client-preview .swatch{ cursor:pointer; }
+  
+  body.client-preview .viewer-shell {
+    position: fixed !important;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw; height: 100vh;
+    max-width: none;
+    z-index: 9999;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  #btnExitPreview {
+    display: none; 
+    position: fixed; 
+    top: 20px; 
+    right: 20px; 
+    z-index: 10000;
+    box-shadow: var(--shadow);
+  }
+
+  /* Carousel toggle in client preview */
+  .strip-toggle-btn { display: none; }
+  .strip-show-btn { display: none; }
+  body.client-preview .strip-wrapper {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10001;
+    background: linear-gradient(0deg, rgba(34,31,26,0.85), rgba(34,31,26,0));
+    padding: 20px 22px 10px;
+  }
+  body.client-preview .strip-wrapper .strip-label { color: var(--paper); }
+  body.client-preview .strip-wrapper.closed { transform: translateY(120%); }
+  body.client-preview .strip-toggle-btn {
+    display: inline-flex;
+    background: rgba(255,255,255,0.15); border: none; color: #fff;
+    padding: 6px 10px; border-radius: 4px; font-size: 11px; font-family: inherit; cursor: pointer;
+  }
+  body.client-preview .strip-toggle-btn:hover { background: rgba(255,255,255,0.25); }
+  body.client-preview .strip-wrapper.closed ~ .strip-show-btn {
+    display: inline-flex; position: fixed; bottom: 20px; right: 20px; z-index: 10000;
+    box-shadow: var(--shadow);
+  }
+</style>
+<link rel="stylesheet" href="branding.css"></head>
+<body>
+
+<div class="wrap">
+  <header class="top site-header">
+    <div class="top-row">
+      <a class="site-brand" href="index.html" aria-label="Rayon Studio home"><img class="site-brand-logo" src="Images/RAYONSLOGO copy.png" alt=""><span class="site-brand-name">RAYON<small>STUDIO</small></span></a>
+      <div class="tagline"> Bringing visions to life.</div>
+    </div>
+  </header>
+
+  <div class="toolbar editor-only">
+    <button class="btn primary" id="btnNewScene">+ Add room photo</button>
+    <button class="btn" id="btnEditMode">Edit hotspots</button>
+    <button class="btn ghost" id="btnMapEditor">Floor plan &amp; map</button>
+    <button class="btn ghost" id="btnBranding">Branding</button>
+    <button class="btn ghost" id="btnAltStyle">Alt style</button>
+    <button class="btn ghost" id="btnSetStart">Set start view</button>
+    <button class="btn ghost" id="btnResetView">Reset view</button>
+    <div class="spacer"></div>
+    <span class="hint" id="sceneCount">0 rooms</span>
+    <button class="btn ghost" id="btnPreview" disabled>Client preview</button>
+    <button class="btn ghost" id="btnExport" disabled>Export tour ↓</button>
+  </div>
+  
+  <button class="btn primary" id="btnExitPreview">✕ Exit client preview</button>
+
+  <div class="viewer-shell" id="viewerShell">
+    <canvas id="panoCanvas"></canvas>
+    <div class="variant-switcher" id="variantSwitcher" style="display:none; position:absolute; top:14px; left:14px; z-index:20; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.14); backdrop-filter:blur(10px); min-width:120px; width:128px; text-align:center;">
+      <label class="variant-label" id="variantLabel" style="display:block; font-size:10px; font-weight:700; color:#fff; margin:0 0 5px; line-height:1.2;">Style switch</label>
+      <div class="variant-track" style="display:flex; align-items:center; justify-content:center; cursor:pointer;">
+        <input id="variantRange" type="range" min="0" max="1" step="1" value="0" style="width:42px; height:10px; cursor:pointer; appearance:none; -webkit-appearance:none; outline:none; margin:0; pointer-events:none; touch-action:none; border-radius:999px;">
+      </div>
+      <div id="variantCurrent" style="margin-top:4px; font-size:9px; color:rgba(255,255,255,0.75);">Original</div>
+    </div>
+    <div class="empty-state" id="emptyState">
+      <div class="es-eyebrow">— No rooms in this tour yet —</div>
+      <h2>Add your first 360° photo to start the walkthrough.</h2>
+      <p>Shoot a room with any 360° camera or app, upload it here, then link rooms together with clickable hotspots.</p>
+      <button class="btn primary" id="btnEmptyAdd">+ Add room photo</button>
+    </div>
+    <div class="mode-flag editor-only" id="modeFlag"><span class="dot"></span><span id="modeFlagText">Viewing tour</span></div>
+    <div class="scene-label" id="sceneLabel" style="display:none;"></div>
+    <div class="zoom-hint" id="zoomHint" style="display:none;">drag to look around · scroll to zoom</div>
+    <img class="branding-overlay hide-branding" id="brandingOverlay" alt="">
+    <div class="minimap hidden-map" id="minimap">
+      <div class="mm-inner" id="mmInner"></div>
+      <div class="mm-toggle" id="mmToggle" title="Expand map">⤢</div>
+      <div class="mm-toggle" id="mmHideX" title="Hide map" style="right:29px;">✕</div>
+    </div>
+    <button class="mm-hide-btn" id="mmShowBtn">Show map</button>
+  </div>
+
+  <div class="hotspot-panel editor-only" id="hotspotPanel" style="display:none;">
+    <div class="hotspot-panel-header">
+      <span>Hotspots in this room</span>
+      <button class="btn ghost" id="btnAddHotspotList">+ Add hotspot</button>
+    </div>
+    <div class="hotspot-list" id="hotspotList"></div>
+  </div>
+
+  <div id="stripWrapper" class="strip-wrapper">
+    <div class="strip-header">
+      <div class="strip-label" id="stripLabel">Rooms in this tour</div>
+      <button class="strip-toggle-btn" id="btnHideStrip">✕ Hide</button>
+    </div>
+    <div class="strip" id="strip"></div>
+  </div>
+  <button class="btn primary strip-show-btn" id="btnShowStrip">↑ Show rooms</button>
+
+  <div class="footnote editor-only">
+    <b>How this works:</b> photos, hotspots, the floor plan and your branding are saved locally in this browser. Use <b>Export tour</b> to download a single, self-contained HTML file you can email, upload to your site, or hand to a developer — it will open and play the tour on its own, no login required.
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none;">
+<input type="file" id="altFileInput" accept="image/*" style="display:none;">
+
+<!-- hotspot create/edit modal -->
+<div class="backdrop" id="hsBackdrop">
+  <div class="modal">
+    <h3 id="hsTitle">New hotspot</h3>
+    <div class="sub">Mark a detail, or link to another room.</div>
+    <div class="type-toggle">
+      <button id="hsTypeNote" class="sel">Design note</button>
+      <button id="hsTypeLink">Go to room</button>
+    </div>
+    <div class="field" id="hsFieldTitle">
+      <label>Label</label>
+      <input type="text" id="hsInputTitle" placeholder="e.g. Walnut console table">
+    </div>
+    <div class="field" id="hsFieldText">
+      <label>Note</label>
+      <textarea id="hsInputText" placeholder="Custom-made, oiled walnut, available on request."></textarea>
+    </div>
+    <div class="field" id="hsFieldTarget" style="display:none;">
+      <label>Target room</label>
+      <select id="hsInputTarget"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="hsDelete" style="display:none;">Delete</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="hsCancel">Cancel</button>
+      <button class="btn primary" id="hsSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- rename scene modal -->
+<div class="backdrop" id="scBackdrop">
+  <div class="modal">
+    <h3>Room name</h3>
+    <div class="sub">Shown on the swatch and inside the viewer.</div>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="scInputName" placeholder="e.g. Living room — staged">
+    </div>
+    <div class="modal-actions">
+      <div class="spacer"></div>
+      <button class="btn ghost" id="scCancel">Cancel</button>
+      <button class="btn primary" id="scSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- alternate style modal -->
+<div class="backdrop" id="altBackdrop">
+  <div class="modal">
+    <h3>Room alternate style</h3>
+    <div class="sub">Upload an alternative version of this room and customize the switch label.</div>
+    <div class="field" id="altFieldUpload">
+      <label>Alt style photo</label>
+      <div class="plan-drop" id="altDrop">+ Upload alternate room photo</div>
+    </div>
+    <div class="field">
+      <label>Slider header text</label>
+      <input type="text" id="altHeaderInput" placeholder="e.g. Choose a style">
+    </div>
+    <div class="field">
+      <label>Label A</label>
+      <input type="text" id="altLabelAInput" placeholder="e.g. Original">
+    </div>
+    <div class="field">
+      <label>Label B</label>
+      <input type="text" id="altLabelBInput" placeholder="e.g. Alternate">
+    </div>
+    <div class="field" id="altPreviewWrap" style="display:none;">
+      <label>Preview</label>
+      <img id="altPreviewImg" style="width:100%; border-radius:4px; border:1px solid var(--line-strong);">
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="altRemove" style="display:none;">Remove alt style</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="altCancel">Cancel</button>
+      <button class="btn primary" id="altSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- floor plan / map editor modal -->
+<div class="backdrop" id="mapBackdrop">
+  <div class="modal wide">
+    <h3>Floor plan &amp; map</h3>
+    <div class="sub">Upload a floor plan, then drag each room's pin onto its real position. Clients can click the map to jump between rooms.</div>
+
+    <div id="planUploadWrap">
+      <div class="plan-drop" id="planDrop">+ Upload floor plan (PNG or JPG)</div>
+    </div>
+
+    <div id="planEditorWrap" style="display:none;">
+      <div class="plan-editor" id="planEditor">
+        <img id="planImg" alt="Floor plan">
+      </div>
+      <div class="plan-hint">Drag a pin to reposition it. Click a pin to select it, then straighten its view direction below.</div>
+      <div class="rotate-row">
+        <span class="hint">View direction:</span>
+        <button class="btn ghost" id="rotLeft">↺ 15°</button>
+        <button class="btn ghost" id="rotRight">↻ 15°</button>
+        <div class="spacer"></div>
+        <button class="btn ghost" id="planReplace">Replace image</button>
+      </div>
+      <div class="unplaced-list" id="unplacedList"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn danger" id="planRemove" style="display:none;">Remove floor plan</button>
+      <div class="spacer"></div>
+      <button class="btn primary" id="mapCloseBtn">Done</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="planFileInput" accept="image/*" style="display:none;">
+
+<!-- branding modal -->
+<div class="backdrop" id="brandBackdrop">
+  <div class="modal">
+    <h3>Custom branding</h3>
+    <div class="sub">Add your logo as a watermark over the viewer. Use a transparent PNG for best results.</div>
+    <div class="brand-preview" id="brandPreview">
+      <img id="brandPreviewImg" style="display:none;">
+    </div>
+    <div id="brandUploadWrap">
+      <div class="plan-drop" id="brandDrop">+ Upload logo (PNG)</div>
+    </div>
+    <div id="brandControls" style="display:none;">
+      <div class="field">
+        <label>Position</label>
+        <select id="brandPosition">
+          <option value="top-left">Top left</option>
+          <option value="top-right" selected>Top right</option>
+          <option value="bottom-left">Bottom left</option>
+          <option value="bottom-right">Bottom right</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Opacity</label>
+        <div class="slider-row"><input type="range" id="brandOpacity" min="20" max="100" value="92"><span id="brandOpacityVal">92%</span></div>
+      </div>
+      <div class="field">
+        <label>Size</label>
+        <div class="slider-row"><input type="range" id="brandScale" min="8" max="30" value="16"><span id="brandScaleVal">16%</span></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="brandRemove" style="display:none;">Remove logo</button>
+      <div class="spacer"></div>
+      <button class="btn primary" id="brandCloseBtn">Done</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="brandFileInput" accept="image/png,image/*" style="display:none;">
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ state ============ */
+  const state = {
+    scenes: [],            // ordered array of scene objects
+    currentId: null,
+    editMode: false,
+    pendingHotspotDir: null, // THREE.Vector3 direction when creating a new hotspot
+    editingHotspotId: null,
+    lon: -90, lat: 0, fov: 78,
+    isPointerDown:false, downX:0, downY:0, downLon:0, downLat:0, dragged:false,
+    clientPreview:false,
+    mapExpanded:false, mapSelectedId:null, mapDraggingId:null, mapManuallyHidden:false,
+    tour: {
+      floorplan: null, floorplanW: 0, floorplanH: 0,
+      branding: { image:null, position:'top-right', opacity:0.92, scale:0.16 }
+    }
+  };
+
+  const els = {
+    canvas: document.getElementById('panoCanvas'),
+    shell: document.getElementById('viewerShell'),
+    empty: document.getElementById('emptyState'),
+    strip: document.getElementById('strip'),
+    sceneCount: document.getElementById('sceneCount'),
+    modeFlag: document.getElementById('modeFlag'),
+    modeFlagText: document.getElementById('modeFlagText'),
+    sceneLabel: document.getElementById('sceneLabel'),
+    zoomHint: document.getElementById('zoomHint'),
+    fileInput: document.getElementById('fileInput'),
+    altFileInput: document.getElementById('altFileInput'),
+    btnAltStyle: document.getElementById('btnAltStyle'),
+    variantSwitcher: document.getElementById('variantSwitcher'),
+    variantLabel: document.getElementById('variantLabel'),
+    variantCurrent: document.getElementById('variantCurrent'),
+    variantRange: document.getElementById('variantRange'),
+    btnExport: document.getElementById('btnExport'),
+    btnPreview: document.getElementById('btnPreview'),
+    minimap: document.getElementById('minimap'),
+    mmInner: document.getElementById('mmInner'),
+    brandingOverlay: document.getElementById('brandingOverlay'),
+    hotspotPanel: document.getElementById('hotspotPanel'),
+    hotspotList: document.getElementById('hotspotList'),
+    btnAddHotspotList: document.getElementById('btnAddHotspotList'),
+    btnEditMode: document.getElementById('btnEditMode')
+  };
+
+  /* ============ UI listeners ============ */
+  document.getElementById('btnHideStrip').addEventListener('click', () => document.getElementById('stripWrapper').classList.add('closed'));
+  document.getElementById('btnShowStrip').addEventListener('click', () => document.getElementById('stripWrapper').classList.remove('closed'));
+
+  function bindHotspotShellEvents(){
+    if(!els.shell) return;
+    els.shell.addEventListener('pointerdown', (ev)=>{
+      const hotspotEl = ev.target.closest('.hotspot');
+      if(!hotspotEl) return;
+      ev.stopPropagation();
+      const hotspotId = hotspotEl.dataset.hotspotId;
+      const sc = currentScene();
+      const hotspot = sc && sc.hotspots ? sc.hotspots.find(h=>h.id===hotspotId) : null;
+      if(hotspot){
+        onHotspotClick(hotspot);
+      }
+    });
+  }
+
+  /* ============ storage helpers ============ */
+  const draftStore = new Map();
+  function signalChange(){window.parent.postMessage({type:'rayon-tour-changed'},location.origin);}
+  async function storeSet(key,value){draftStore.set(key,value);signalChange();return {value};}
+  async function storeGet(key){return {value:draftStore.get(key)};}
+  async function storeDelete(key){draftStore.delete(key);signalChange();}
+  async function storeList(prefix){return {keys:[...draftStore.keys()].filter(key=>key.startsWith(prefix))};}
+  function persistScene(scene){
+    return storeSet('scene:'+scene.id, JSON.stringify(scene));
+  }
+  function persistOrder(){
+    return storeSet('scene-order', JSON.stringify(state.scenes.map(s=>s.id)));
+  }
+  function normalizeScene(sc){
+    if(sc.initialLon === undefined) sc.initialLon = -90;
+    if(sc.initialLat === undefined) sc.initialLat = 0;
+    
+    if(!sc.alt){
+      sc.alt = { image:null, header:'Style switch', labelA:'Original', labelB:'Alternate', active:false };
+    } else {
+      sc.alt = Object.assign({ image:null, header:'Style switch', labelA:'Original', labelB:'Alternate', active:false }, sc.alt);
+      if(sc.alt.label && !sc.alt.labelA) sc.alt.labelA = sc.alt.label;
+      if(sc.alt.backLabel && !sc.alt.labelB) sc.alt.labelB = sc.alt.backLabel;
+    }
+    if(!Array.isArray(sc.hotspots)) sc.hotspots = [];
+  }
+  function persistTourSettings(){
+    return storeSet('tour-settings', JSON.stringify(state.tour));
+  }
+  async function loadTourSettings(){
+    const r = await storeGet('tour-settings');
+    if(r && r.value){
+      try{
+        const parsed = JSON.parse(r.value);
+        state.tour = Object.assign({
+          floorplan:null, floorplanW:0, floorplanH:0,
+          branding:{ image:null, position:'top-right', opacity:0.92, scale:0.16 }
+        }, parsed);
+        if(!state.tour.branding) state.tour.branding = { image:null, position:'top-right', opacity:0.92, scale:0.16 };
+      }catch(e){}
+    }
+  }
+
+  async function loadAll(){
+    await loadTourSettings();
+    const orderRes = await storeGet('scene-order');
+    let order = [];
+    if(orderRes && orderRes.value){
+      try{ order = JSON.parse(orderRes.value); }catch(e){ order = []; }
+    }
+    const listRes = await storeList('scene:');
+    const keys = (listRes && listRes.keys) ? listRes.keys : [];
+    const loaded = {};
+    for(const k of keys){
+      const r = await storeGet(k);
+      if(r && r.value){
+        try{ const sc = JSON.parse(r.value); loaded[sc.id] = sc; }catch(e){}
+      }
+    }
+    let ordered = order.map(id=>loaded[id]).filter(Boolean);
+    Object.values(loaded).forEach(sc=>{ if(!ordered.find(s=>s.id===sc.id)) ordered.push(sc); });
+    ordered.forEach(normalizeScene);
+    state.scenes = ordered;
+    applyBrandingOverlay();
+    renderMinimapShell();
+    if(state.scenes.length){
+      state.currentId = state.scenes[0].id;
+    }
+    renderStrip();
+    refreshViewerState();
+  }
+
+  /* ============ three.js viewer ============ */
+  let renderer, scene3, camera, sphere, texture;
+  let animReq = null;
+  let textureLoadVersion = 0;
+
+  function initThree(){
+    renderer = new THREE.WebGLRenderer({ canvas: els.canvas, antialias:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    camera = new THREE.PerspectiveCamera(state.fov, 16/9, 0.1, 1000);
+    scene3 = new THREE.Scene();
+
+    const geo = new THREE.SphereGeometry(500, 60, 40);
+    geo.scale(-1, 1, 1);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x2b2721 });
+    sphere = new THREE.Mesh(geo, mat);
+    scene3.add(sphere);
+
+    resizeRenderer();
+    window.addEventListener('resize', resizeRenderer);
+
+    els.canvas.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    els.canvas.addEventListener('wheel', onWheel, { passive:false });
+
+    animate();
+  }
+
+  function resizeRenderer(){
+    const w = els.shell.clientWidth, h = els.shell.clientHeight;
+    if(!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+
+  function animate(){
+    animReq = requestAnimationFrame(animate);
+    const phi = THREE.MathUtils.degToRad(90 - state.lat);
+    const theta = THREE.MathUtils.degToRad(state.lon);
+    const target = new THREE.Vector3(
+      500 * Math.sin(phi) * Math.cos(theta),
+      500 * Math.cos(phi),
+      500 * Math.sin(phi) * Math.sin(theta)
+    );
+    camera.lookAt(target);
+    camera.fov = state.fov;
+    camera.updateProjectionMatrix();
+    renderer.render(scene3, camera);
+    updateHotspotOverlay();
+    updateMinimapCone();
+  }
+
+  function onPointerDown(e){
+    state.isPointerDown = true;
+    state.dragged = false;
+    state.downX = e.clientX; state.downY = e.clientY;
+    state.downLon = state.lon; state.downLat = state.lat;
+    els.canvas.classList.add('dragging');
+  }
+  function onPointerMove(e){
+    if(!state.isPointerDown) return;
+    const dx = e.clientX - state.downX, dy = e.clientY - state.downY;
+    if(Math.abs(dx) > 3 || Math.abs(dy) > 3) state.dragged = true;
+    state.lon = state.downLon - dx * 0.18;
+    state.lat = Math.max(-85, Math.min(85, state.downLat + dy * 0.18));
+  }
+  function onPointerUp(e){
+    if(!state.isPointerDown) return;
+    state.isPointerDown = false;
+    els.canvas.classList.remove('dragging');
+    if(!state.dragged){
+      handleCanvasClick(e);
+    }
+  }
+  function onWheel(e){
+    e.preventDefault();
+    state.fov = Math.max(32, Math.min(96, state.fov + e.deltaY * 0.04));
+  }
+
+  function handleCanvasClick(e){
+    if(!state.currentId) return;
+    const rect = els.canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(mouse, camera);
+    const hits = ray.intersectObject(sphere);
+    if(!hits.length) return;
+    const point = hits[0].point.clone().normalize();
+
+    if(state.editMode){
+      openHotspotModal(null, point);
+    }
+  }
+
+  function setTextureForCurrentScene(){
+    const sc = currentScene();
+    if(!sc) return;
+    const requestedVersion = ++textureLoadVersion;
+    const img = new Image();
+    const src = sc.alt && sc.alt.active && sc.alt.image ? sc.alt.image : sc.image;
+    img.onload = function(){
+      if(requestedVersion !== textureLoadVersion) return;
+      if(state.currentId !== sc.id) return;
+      const tex = new THREE.CanvasTexture(img);
+      tex.colorSpace = THREE.SRGBColorSpace || tex.colorSpace;
+      if(sphere.material.map){ sphere.material.map.dispose(); }
+      sphere.material.map = tex;
+      sphere.material.color.set(0xffffff);
+      sphere.material.needsUpdate = true;
+      if(renderer) renderer.render(scene3, camera);
+      updateHotspotOverlay();
+    };
+    img.onerror = function(){
+      if(requestedVersion !== textureLoadVersion) return;
+      if(state.currentId !== sc.id) return;
+      sphere.material.map = null;
+      sphere.material.color.set(0xffffff);
+      sphere.material.needsUpdate = true;
+      if(renderer) renderer.render(scene3, camera);
+      updateHotspotOverlay();
+    };
+    img.src = src;
+  }
+
+  function currentScene(){
+    return state.scenes.find(s=>s.id===state.currentId) || null;
+  }
+
+  /* ============ hotspot overlay (DOM) ============ */
+  bindHotspotShellEvents();
+
+  function updateHotspotOverlay(){
+    const sc = currentScene();
+    if(!sc || !sc.hotspots) {
+      els.shell.querySelectorAll('.hotspot').forEach(n => n.remove());
+      return;
+    }
+    
+    const w = els.shell.clientWidth, h = els.shell.clientHeight;
+    
+    const currentIds = sc.hotspots.map(h => h.id);
+    els.shell.querySelectorAll('.hotspot').forEach(n => {
+      if (!currentIds.includes(n.dataset.hotspotId)) n.remove();
+    });
+
+    sc.hotspots.forEach(hs => {
+      const dir = new THREE.Vector3(hs.x, hs.y, hs.z).multiplyScalar(490);
+      const proj = dir.clone().project(camera);
+      let div = els.shell.querySelector(`.hotspot[data-hotspot-id="${hs.id}"]`);
+
+      if(proj.z > 1) {
+        if (div) div.style.display = 'none';
+        return;
+      }
+
+      const sx = (proj.x*0.5+0.5) * w;
+      const sy = (1-(proj.y*0.5+0.5)) * h;
+
+      if(sx < -30 || sx > w+30 || sy < -30 || sy > h+30) {
+        if (div) div.style.display = 'none';
+        return;
+      }
+
+      if(!div) {
+        div = document.createElement('div');
+        div.className = 'hotspot ' + hs.type;
+        div.dataset.hotspotId = hs.id;
+        div.style.pointerEvents = 'auto';
+        div.title = hs.title || (hs.type==='link' ? 'Go to room' : 'Note');
+        els.shell.appendChild(div);
+      }
+
+      div.style.display = 'flex'; 
+      div.style.left = sx + 'px';
+      div.style.top = sy + 'px';
+    });
+  }
+
+  function onHotspotClick(hs){
+    if(state.editMode){
+      const dir = new THREE.Vector3(hs.x, hs.y, hs.z);
+      openHotspotModal(hs, dir);
+      return;
+    }
+    if(hs.type === 'link'){
+      let targetId = hs.targetSceneId || hs.targetScene || hs.sceneId || null;
+      let targetScene = targetId ? state.scenes.find(s=>s.id===targetId) : null;
+      if(!targetScene && targetId){
+        const needle = String(targetId).toLowerCase();
+        targetScene = state.scenes.find(s=>{
+          const name = (s.name||'').toLowerCase();
+          return name === needle || name.includes(needle);
+        });
+      }
+      if(!targetScene && hs.title){
+        const needle = (hs.title||'').toLowerCase();
+        targetScene = state.scenes.find(s=>{
+          const name = (s.name||'').toLowerCase();
+          return name === needle || name.includes(needle);
+        });
+      }
+      if(!targetScene && hs.text){
+        const needle = (hs.text||'').toLowerCase();
+        targetScene = state.scenes.find(s=>{
+          const name = (s.name||'').toLowerCase();
+          return name === needle || name.includes(needle);
+        });
+      }
+      if(targetScene){
+        activateScene(targetScene.id);
+        return;
+      }
+    }
+    showNotePopover(hs);
+  }
+
+  function showNotePopover(hs){
+    document.querySelectorAll('.popover').forEach(p=>p.remove());
+    const pop = document.createElement('div');
+    pop.className = 'popover';
+    pop.style.left = '50%';
+    pop.style.top = '50%';
+    pop.style.transform = 'translate(-50%,-50%)';
+    pop.innerHTML = '<span class="close">✕</span><h4></h4><div class="tx"></div>';
+    pop.querySelector('h4').textContent = hs.title || 'Note';
+    pop.querySelector('.tx').textContent = hs.text || '';
+    pop.querySelector('.close').addEventListener('click', ()=>pop.remove());
+    els.shell.appendChild(pop);
+    setTimeout(()=>{ document.addEventListener('click', function h(ev){ if(!pop.contains(ev.target)){ pop.remove(); document.removeEventListener('click', h);} }); }, 10);
+  }
+
+  /* ============ scenes ============ */
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+  function fileToCompressedDataURL(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = ()=>{
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = ()=>{
+          const maxW = 2400;
+          const scale = Math.min(1, maxW / img.width);
+          const cw = Math.round(img.width * scale), ch = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, cw, ch);
+          let quality = 0.74;
+          let dataUrl = canvas.toDataURL('image/jpeg', quality);
+          while(dataUrl.length > 4.3 * 1024 * 1024 && quality > 0.35){
+            quality -= 0.1;
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+          resolve(dataUrl);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addSceneFromFile(file){
+    const dataUrl = await fileToCompressedDataURL(file);
+    const n = state.scenes.length + 1;
+    const scene = {
+      id: uid(),
+      name: 'Room ' + n,
+      image: dataUrl,
+      hotspots: [],
+      mapX: null, mapY: null, mapHeading: 0,
+      initialLon: -90, initialLat: 0, // Defaults to looking at exact center of equirectangular image
+      alt: { image:null, header:'Style switch', labelA:'Original', labelB:'Alternate', active:false }
+    };
+    state.scenes.push(scene);
+    await persistScene(scene);
+    await persistOrder();
+    state.currentId = scene.id;
+    renderStrip();
+    refreshViewerState();
+    renderMinimapShell();
+  }
+
+  async function deleteScene(id){
+    const sc = state.scenes.find(s=>s.id===id);
+    if(!sc) return;
+    if(!confirm('Delete "'+sc.name+'"? This removes it from the tour.')) return;
+    state.scenes.forEach(s=>{
+      if(s.id===id) return;
+      let changed = false;
+      s.hotspots = (s.hotspots||[]).filter(h=>{
+        if(h.type==='link' && h.targetSceneId===id){ changed = true; return false; }
+        return true;
+      });
+      if(changed) persistScene(s);
+    });
+    state.scenes = state.scenes.filter(s=>s.id!==id);
+    await storeDelete('scene:'+id);
+    await persistOrder();
+    if(state.currentId===id){
+      state.currentId = state.scenes.length ? state.scenes[0].id : null;
+    }
+    renderStrip();
+    refreshViewerState();
+    renderMinimapShell();
+  }
+
+  function activateScene(id){
+    const nextScene = state.scenes.find(s=>s.id===id);
+    if(!nextScene) return false;
+    state.currentId = nextScene.id;
+    state.lon = nextScene.initialLon !== undefined ? nextScene.initialLon : -90;
+    state.lat = nextScene.initialLat !== undefined ? nextScene.initialLat : 0;
+    state.fov = 78;
+    renderStrip();
+    updateSceneChrome();
+    highlightCurrentPin();
+    renderMinimapShell();
+    setTextureForCurrentScene();
+    updateHotspotOverlay();
+    return true;
+  }
+
+  function switchScene(id){
+    return activateScene(id);
+  }
+
+  function renderStrip(){
+    els.strip.innerHTML = '';
+    state.scenes.forEach((sc, i)=>{
+      const card = document.createElement('div');
+      card.className = 'swatch' + (sc.id===state.currentId ? ' active' : '');
+      card.innerHTML =
+        '<img src="'+sc.image+'" alt="">' +
+        '<div class="fold"></div>' +
+        '<div class="idx">'+String(i+1).padStart(2,'0')+'</div>' +
+        '<div class="del">✕</div>' +
+        '<div class="nm">'+escapeHtml(sc.name)+'</div>';
+      card.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('del')){ e.stopPropagation(); deleteScene(sc.id); return; }
+        switchScene(sc.id);
+      });
+      card.addEventListener('dblclick', (e)=>{
+        if(state.clientPreview) return;
+        e.stopPropagation();
+        openRenameModal(sc);
+      });
+      els.strip.appendChild(card);
+    });
+    const addCard = document.createElement('div');
+    addCard.className = 'swatch add editor-only';
+    addCard.innerHTML = '<div class="plus">+</div><div>Add room</div>';
+    addCard.addEventListener('click', ()=> els.fileInput.click());
+    els.strip.appendChild(addCard);
+
+    els.sceneCount.textContent = state.scenes.length + (state.scenes.length===1 ? ' room' : ' rooms');
+    els.btnExport.disabled = state.scenes.length === 0;
+    els.btnPreview.disabled = state.scenes.length === 0;
+    renderHotspotInventory();
+  }
+
+  function renderHotspotInventory(){
+    if(!els.hotspotPanel) return;
+    const sc = currentScene();
+    if(!state.editMode || !sc){
+      els.hotspotPanel.style.display = 'none';
+      return;
+    }
+    els.hotspotPanel.style.display = 'block';
+    els.hotspotList.innerHTML = '';
+    const hotspots = sc.hotspots || [];
+    if(!hotspots.length){
+      const msg = document.createElement('div');
+      msg.className = 'hotspot-item';
+      msg.innerHTML = '<div class="meta"><span class="tag">✚</span><span class="name">No hotspots yet</span></div>';
+      els.hotspotList.appendChild(msg);
+      return;
+    }
+    hotspots.forEach((hs, idx)=>{
+      const row = document.createElement('div');
+      row.className = 'hotspot-item';
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = hs.type === 'link' ? '→' : 'i';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = hs.title || (hs.type === 'link' ? 'Link hotspot' : 'Note hotspot');
+      const target = document.createElement('span');
+      target.textContent = hs.type === 'link' ? 'to ' + (state.scenes.find(s=>s.id===hs.targetSceneId)?.name || hs.targetSceneId || hs.text || 'unknown') : hs.text || 'note';
+      target.style.opacity = '0.7';
+      target.style.fontSize = '12px';
+      meta.appendChild(tag);
+      meta.appendChild(name);
+      meta.appendChild(target);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn ghost';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', ()=>{
+        const dir = new THREE.Vector3(hs.x, hs.y, hs.z);
+        openHotspotModal(hs, dir);
+      });
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn danger';
+      delBtn.textContent = 'Remove';
+      delBtn.addEventListener('click', ()=>{
+        sc.hotspots = sc.hotspots.filter(h=>h.id!==hs.id);
+        persistScene(sc);
+        renderHotspotInventory();
+        updateHotspotOverlay();
+      });
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(meta);
+      row.appendChild(actions);
+      els.hotspotList.appendChild(row);
+    });
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML;
+  }
+
+  function refreshViewerState(){
+    const has = state.scenes.length > 0;
+    els.empty.style.display = has ? 'none' : 'flex';
+    els.zoomHint.style.display = has ? 'block' : 'none';
+    els.sceneLabel.style.display = has ? 'block' : 'none';
+    if(has){
+      if(!currentScene()) state.currentId = state.scenes[0].id;
+      setTextureForCurrentScene();
+      updateSceneChrome();
+    }
+  }
+
+  function updateSceneChrome(){
+    const sc = currentScene();
+    els.sceneLabel.textContent = sc ? sc.name : '';
+    updateVariantSwitch();
+  }
+
+  function updateVariantSwitch(){
+    const sc = currentScene();
+    if(!sc || !sc.alt || !sc.alt.image){
+      els.variantSwitcher.style.display = 'none';
+      return;
+    }
+    els.variantSwitcher.style.display = 'block';
+    els.variantLabel.textContent = sc.alt.header || 'Style switch';
+    els.variantRange.value = sc.alt.active ? '1' : '0';
+    els.variantCurrent.textContent = sc.alt.active ? (sc.alt.labelB || 'Alternate') : (sc.alt.labelA || 'Original');
+  }
+
+  /* ============ hotspot modal ============ */
+  const hsBackdrop = document.getElementById('hsBackdrop');
+  const hsTypeNote = document.getElementById('hsTypeNote');
+  const hsTypeLink = document.getElementById('hsTypeLink');
+  const hsFieldTitle = document.getElementById('hsFieldTitle');
+  const hsFieldText = document.getElementById('hsFieldText');
+  const hsFieldTarget = document.getElementById('hsFieldTarget');
+  const hsInputTitle = document.getElementById('hsInputTitle');
+  const hsInputText = document.getElementById('hsInputText');
+  const hsInputTarget = document.getElementById('hsInputTarget');
+  const hsDelete = document.getElementById('hsDelete');
+  let hsType = 'note';
+
+  function setHsType(t){
+    hsType = t;
+    hsTypeNote.classList.toggle('sel', t==='note');
+    hsTypeLink.classList.toggle('sel', t==='link');
+    hsFieldText.style.display = t==='note' ? 'block' : 'none';
+    hsFieldTarget.style.display = t==='link' ? 'block' : 'none';
+  }
+  hsTypeNote.addEventListener('click', ()=>setHsType('note'));
+  hsTypeLink.addEventListener('click', ()=>setHsType('link'));
+
+  function openHotspotModal(existingHs, dirVector){
+    document.getElementById('hsTitle').textContent = existingHs ? 'Edit hotspot' : 'New hotspot';
+    state.pendingHotspotDir = dirVector;
+    state.editingHotspotId = existingHs ? existingHs.id : null;
+    setHsType(existingHs ? existingHs.type : 'note');
+    hsInputTitle.value = existingHs ? (existingHs.title||'') : '';
+    hsInputText.value = existingHs ? (existingHs.text||'') : '';
+
+    hsInputTarget.innerHTML = '';
+    state.scenes.filter(s=>s.id!==state.currentId).forEach(s=>{
+      const opt = document.createElement('option');
+      opt.value = s.id; opt.textContent = s.name;
+      hsInputTarget.appendChild(opt);
+    });
+    if(existingHs && existingHs.targetSceneId) hsInputTarget.value = existingHs.targetSceneId;
+
+    hsDelete.style.display = existingHs ? 'inline-flex' : 'none';
+    hsBackdrop.classList.add('show');
+  }
+  document.getElementById('hsCancel').addEventListener('click', ()=> hsBackdrop.classList.remove('show'));
+  hsDelete.addEventListener('click', ()=>{
+    const sc = currentScene();
+    if(sc && state.editingHotspotId){
+      sc.hotspots = sc.hotspots.filter(h=>h.id!==state.editingHotspotId);
+      persistScene(sc);
+    }
+    hsBackdrop.classList.remove('show');
+    renderHotspotInventory();
+    updateHotspotOverlay();
+  });
+  document.getElementById('hsSave').addEventListener('click', ()=>{
+    const sc = currentScene();
+    if(!sc || !state.pendingHotspotDir) { hsBackdrop.classList.remove('show'); return; }
+    if(hsType === 'link' && !hsInputTarget.value){
+      alert('Choose which room this hotspot should lead to.');
+      return;
+    }
+    if(state.editingHotspotId){
+      const hs = sc.hotspots.find(h=>h.id===state.editingHotspotId);
+      hs.type = hsType;
+      hs.title = hsInputTitle.value.trim();
+      hs.text = hsInputText.value.trim();
+      hs.targetSceneId = hsType==='link' ? hsInputTarget.value : null;
+    } else {
+      sc.hotspots = sc.hotspots || [];
+      sc.hotspots.push({
+        id: uid(),
+        type: hsType,
+        title: hsInputTitle.value.trim() || (hsType==='link' ? 'Go to room' : 'Note'),
+        text: hsInputText.value.trim(),
+        targetSceneId: hsType==='link' ? hsInputTarget.value : null,
+        x: state.pendingHotspotDir.x, y: state.pendingHotspotDir.y, z: state.pendingHotspotDir.z
+      });
+    }
+    persistScene(sc);
+    hsBackdrop.classList.remove('show');
+    renderHotspotInventory();
+    updateHotspotOverlay();
+  });
+
+  /* ============ rename modal ============ */
+  const scBackdrop = document.getElementById('scBackdrop');
+  const scInputName = document.getElementById('scInputName');
+  let renamingId = null;
+  function openRenameModal(sc){
+    renamingId = sc.id;
+    scInputName.value = sc.name;
+    scBackdrop.classList.add('show');
+    setTimeout(()=>scInputName.focus(), 30);
+  }
+  document.getElementById('scCancel').addEventListener('click', ()=> scBackdrop.classList.remove('show'));
+  document.getElementById('scSave').addEventListener('click', ()=>{
+    const sc = state.scenes.find(s=>s.id===renamingId);
+    if(sc && scInputName.value.trim()){
+      sc.name = scInputName.value.trim();
+      persistScene(sc);
+      renderStrip();
+      updateSceneChrome();
+    }
+    scBackdrop.classList.remove('show');
+  });
+
+  /* ============ minimap (positioning overlay) ============ */
+  function renderMinimapShell(){
+    const mm = els.minimap;
+    const inner = els.mmInner;
+    if(!state.tour.floorplan){
+      mm.classList.add('hidden-map');
+      inner.innerHTML = '';
+      return;
+    }
+    if(!state.mapManuallyHidden) mm.classList.remove('hidden-map');
+    inner.innerHTML = '';
+    const img = document.createElement('img');
+    img.className = 'mm-plan';
+    img.src = state.tour.floorplan;
+    inner.appendChild(img);
+    state.scenes.forEach((sc,i)=>{
+      if(sc.mapX==null || sc.mapY==null) return;
+      const pin = document.createElement('div');
+      pin.className = 'mm-pin' + (sc.id===state.currentId ? ' current' : '');
+      pin.style.left = (sc.mapX*100)+'%';
+      pin.style.top = (sc.mapY*100)+'%';
+      pin.title = sc.name;
+      pin.addEventListener('click', (e)=>{ e.stopPropagation(); switchScene(sc.id); });
+      inner.appendChild(pin);
+    });
+    const cone = document.createElement('div');
+    cone.className = 'mm-cone';
+    cone.id = 'mmCone';
+    inner.appendChild(cone);
+    updateMinimapCone();
+  }
+
+  function highlightCurrentPin(){
+    els.mmInner.querySelectorAll('.mm-pin').forEach(p=>p.classList.remove('current'));
+    const sc = currentScene();
+    if(!sc) return;
+    const pins = els.mmInner.querySelectorAll('.mm-pin');
+    const placed = state.scenes.filter(s=>s.mapX!=null && s.mapY!=null);
+    const idx = placed.findIndex(s=>s.id===sc.id);
+    if(idx>=0 && pins[idx]) pins[idx].classList.add('current');
+    updateMinimapCone();
+  }
+
+  function updateMinimapCone(){
+    const cone = document.getElementById('mmCone');
+    if(!cone) return;
+    const sc = currentScene();
+    if(!sc || sc.mapX==null || sc.mapY==null){ cone.style.display='none'; return; }
+    cone.style.display = 'block';
+    cone.style.left = (sc.mapX*100)+'%';
+    cone.style.top = (sc.mapY*100)+'%';
+    
+    // Sync the orientation mirroring map heading correctly
+    const angle = (sc.mapHeading || 0) + state.lon;
+    cone.style.transform = 'translate(-50%,-100%) rotate(' + angle + 'deg)';
+  }
+
+  document.getElementById('mmToggle').addEventListener('click', ()=>{
+    state.mapExpanded = !state.mapExpanded;
+    els.minimap.classList.toggle('expanded', state.mapExpanded);
+  });
+  document.getElementById('mmHideX').addEventListener('click', ()=>{
+    state.mapManuallyHidden = true;
+    els.minimap.classList.add('hidden-map');
+    document.getElementById('mmShowBtn').style.display = 'block';
+  });
+  document.getElementById('mmShowBtn').addEventListener('click', ()=>{
+    state.mapManuallyHidden = false;
+    document.getElementById('mmShowBtn').style.display = 'none';
+    renderMinimapShell();
+  });
+
+  /* ============ floor plan / map editor modal ============ */
+  const mapBackdrop = document.getElementById('mapBackdrop');
+  const planUploadWrap = document.getElementById('planUploadWrap');
+  const planEditorWrap = document.getElementById('planEditorWrap');
+  const planImg = document.getElementById('planImg');
+  const planEditor = document.getElementById('planEditor');
+  const planFileInput = document.getElementById('planFileInput');
+  const unplacedList = document.getElementById('unplacedList');
+
+  document.getElementById('btnMapEditor').addEventListener('click', ()=>{
+    mapBackdrop.classList.add('show');
+    refreshMapModal();
+  });
+  document.getElementById('mapCloseBtn').addEventListener('click', ()=>{
+    mapBackdrop.classList.remove('show');
+    renderMinimapShell();
+  });
+  document.getElementById('planDrop').addEventListener('click', ()=> planFileInput.click());
+  document.getElementById('planReplace').addEventListener('click', ()=> planFileInput.click());
+  planFileInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const dataUrl = await fileToCompressedDataURL(file);
+    state.tour.floorplan = dataUrl;
+    await persistTourSettings();
+    refreshMapModal();
+    e.target.value = '';
+  });
+  document.getElementById('planRemove').addEventListener('click', ()=>{
+    if(!confirm('Remove the floor plan? Room positions will be kept but hidden until you upload a new plan.')) return;
+    state.tour.floorplan = null;
+    persistTourSettings();
+    refreshMapModal();
+    renderMinimapShell();
+  });
+
+  function refreshMapModal(){
+    const has = !!state.tour.floorplan;
+    planUploadWrap.style.display = has ? 'none' : 'block';
+    planEditorWrap.style.display = has ? 'block' : 'none';
+    document.getElementById('planRemove').style.display = has ? 'inline-flex' : 'none';
+    if(!has) return;
+    planImg.src = state.tour.floorplan;
+    renderPlanPins();
+  }
+
+  function renderPlanPins(){
+    planEditor.querySelectorAll('.plan-pin').forEach(n=>n.remove());
+    state.scenes.forEach((sc,i)=>{
+      const x = sc.mapX==null ? 0.5 : sc.mapX;
+      const y = sc.mapY==null ? 0.5 : sc.mapY;
+      
+      const pin = document.createElement('div');
+      pin.className = 'plan-pin' + (sc.id===state.mapSelectedId ? ' sel' : '');
+      pin.style.left = (x*100)+'%';
+      pin.style.top = (y*100)+'%';
+      
+      const textSpan = document.createElement('span');
+      textSpan.textContent = String(i+1).padStart(2,'0');
+      pin.appendChild(textSpan);
+      
+      const cone = document.createElement('div');
+      cone.className = 'plan-cone';
+      const startLon = sc.initialLon !== undefined ? sc.initialLon : -90;
+      cone.style.transform = `rotate(${(sc.mapHeading||0) + startLon}deg)`;
+      pin.appendChild(cone);
+
+      pin.title = sc.name;
+      pin.addEventListener('pointerdown', (e)=>{
+        e.stopPropagation();
+        state.mapSelectedId = sc.id;
+        state.mapDraggingId = sc.id;
+        renderPlanPins();
+      });
+      planEditor.appendChild(pin);
+    });
+    renderUnplacedList();
+  }
+
+  function renderUnplacedList(){
+    const unplaced = state.scenes.filter(s=>s.mapX==null || s.mapY==null);
+    unplacedList.innerHTML = '';
+    if(!unplaced.length) return;
+    const label = document.createElement('span');
+    label.className = 'hint';
+    label.style.width = '100%';
+    label.textContent = 'Not yet positioned (defaulted to center — drag to place):';
+    unplacedList.appendChild(label);
+    unplaced.forEach(sc=>{
+      const chip = document.createElement('span');
+      chip.className = 'unplaced-chip';
+      chip.textContent = sc.name;
+      unplacedList.appendChild(chip);
+    });
+  }
+
+  planEditor.addEventListener('pointermove', (e)=>{
+    if(!state.mapDraggingId) return;
+    const rect = planEditor.getBoundingClientRect();
+    let x = (e.clientX - rect.left) / rect.width;
+    let y = (e.clientY - rect.top) / rect.height;
+    x = Math.max(0.02, Math.min(0.98, x));
+    y = Math.max(0.02, Math.min(0.98, y));
+    const sc = state.scenes.find(s=>s.id===state.mapDraggingId);
+    if(sc){ sc.mapX = x; sc.mapY = y; renderPlanPins(); }
+  });
+  window.addEventListener('pointerup', ()=>{
+    if(state.mapDraggingId){
+      const sc = state.scenes.find(s=>s.id===state.mapDraggingId);
+      if(sc) persistScene(sc);
+      state.mapDraggingId = null;
+    }
+  });
+
+  document.getElementById('rotLeft').addEventListener('click', ()=> nudgeHeading(-15));
+  document.getElementById('rotRight').addEventListener('click', ()=> nudgeHeading(15));
+  function nudgeHeading(delta){
+    const sc = state.scenes.find(s=>s.id===state.mapSelectedId) || currentScene();
+    if(!sc) return;
+    sc.mapHeading = ((sc.mapHeading||0) + delta + 360) % 360;
+    persistScene(sc);
+    updateMinimapCone();
+    if (state.mapSelectedId) renderPlanPins();
+  }
+
+  /* ============ branding modal ============ */
+  const brandBackdrop = document.getElementById('brandBackdrop');
+  const brandUploadWrap = document.getElementById('brandUploadWrap');
+  const brandControls = document.getElementById('brandControls');
+  const brandPreviewImg = document.getElementById('brandPreviewImg');
+  const brandFileInput = document.getElementById('brandFileInput');
+  const brandPosition = document.getElementById('brandPosition');
+  const brandOpacity = document.getElementById('brandOpacity');
+  const brandScale = document.getElementById('brandScale');
+
+  document.getElementById('btnBranding').addEventListener('click', ()=>{
+    brandBackdrop.classList.add('show');
+    refreshBrandModal();
+  });
+  document.getElementById('brandCloseBtn').addEventListener('click', ()=>{
+    brandBackdrop.classList.remove('show');
+  });
+  document.getElementById('brandDrop').addEventListener('click', ()=> brandFileInput.click());
+  brandFileInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async ()=>{
+      state.tour.branding.image = reader.result;
+      await persistTourSettings();
+      refreshBrandModal();
+      applyBrandingOverlay();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+  document.getElementById('brandRemove').addEventListener('click', ()=>{
+    state.tour.branding.image = null;
+    persistTourSettings();
+    refreshBrandModal();
+    applyBrandingOverlay();
+  });
+  brandPosition.addEventListener('change', ()=>{
+    state.tour.branding.position = brandPosition.value;
+    persistTourSettings();
+    applyBrandingOverlay();
+  });
+  brandOpacity.addEventListener('input', ()=>{
+    state.tour.branding.opacity = (+brandOpacity.value)/100;
+    document.getElementById('brandOpacityVal').textContent = brandOpacity.value+'%';
+    persistTourSettings();
+    applyBrandingOverlay();
+  });
+  brandScale.addEventListener('input', ()=>{
+    state.tour.branding.scale = (+brandScale.value)/100;
+    document.getElementById('brandScaleVal').textContent = brandScale.value+'%';
+    persistTourSettings();
+    applyBrandingOverlay();
+  });
+
+  function refreshBrandModal(){
+    const b = state.tour.branding;
+    const has = !!b.image;
+    brandUploadWrap.style.display = has ? 'none' : 'block';
+    brandControls.style.display = has ? 'block' : 'none';
+    document.getElementById('brandRemove').style.display = has ? 'inline-flex' : 'none';
+    brandPreviewImg.style.display = has ? 'block' : 'none';
+    if(has){
+      brandPreviewImg.src = b.image;
+      brandPreviewImg.style.opacity = b.opacity;
+      brandPreviewImg.style.top = b.position.includes('top') ? '8px' : 'auto';
+      brandPreviewImg.style.bottom = b.position.includes('bottom') ? '8px' : 'auto';
+      brandPreviewImg.style.left = b.position.includes('left') ? '8px' : 'auto';
+      brandPreviewImg.style.right = b.position.includes('right') ? '8px' : 'auto';
+    }
+    brandPosition.value = b.position;
+    brandOpacity.value = Math.round(b.opacity*100);
+    document.getElementById('brandOpacityVal').textContent = Math.round(b.opacity*100)+'%';
+    brandScale.value = Math.round(b.scale*100);
+    document.getElementById('brandScaleVal').textContent = Math.round(b.scale*100)+'%';
+  }
+
+  function applyBrandingOverlay(){
+    const b = state.tour.branding;
+    const el = els.brandingOverlay;
+    if(!b || !b.image){
+      el.classList.add('hide-branding');
+      return;
+    }
+    el.src = b.image;
+    el.style.opacity = b.opacity;
+    el.style.maxWidth = (b.scale*100)+'%';
+    el.style.maxHeight = (b.scale*130)+'%';
+    el.className = 'branding-overlay pos-' + b.position;
+  }
+
+  /* ============ client preview toggle ============ */
+  document.getElementById('btnPreview').addEventListener('click', ()=>{
+    state.clientPreview = true;
+    document.body.classList.add('client-preview');
+    document.getElementById('btnExitPreview').style.display = 'inline-flex';
+    setTimeout(resizeRenderer, 50); // Resize viewer logic when it goes fullscreen
+  });
+  document.getElementById('btnExitPreview').addEventListener('click', ()=>{
+    state.clientPreview = false;
+    document.body.classList.remove('client-preview');
+    document.getElementById('btnExitPreview').style.display = 'none';
+    setTimeout(resizeRenderer, 50); // Resize back to component view
+  });
+
+  /* ============ toolbar wiring ============ */
+  document.getElementById('btnNewScene').addEventListener('click', ()=> els.fileInput.click());
+  document.getElementById('btnEmptyAdd').addEventListener('click', ()=> els.fileInput.click());
+  
+  // Custom Default View Logic additions
+  document.getElementById('btnSetStart').addEventListener('click', ()=>{
+    const sc = currentScene();
+    if(!sc) return;
+    sc.initialLon = state.lon;
+    sc.initialLat = state.lat;
+    persistScene(sc);
+    
+    // Auto-update map editor if open
+    if(state.mapSelectedId === sc.id) {
+        renderPlanPins();
+    }
+    
+    const btn = document.getElementById('btnSetStart');
+    const prevText = btn.textContent;
+    btn.textContent = '✓ Saved view';
+    setTimeout(() => { btn.textContent = prevText; }, 1500);
+  });
+  
+  els.fileInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(file) await addSceneFromFile(file);
+    e.target.value = '';
+  });
+  document.getElementById('btnEditMode').addEventListener('click', (e)=>{
+    state.editMode = !state.editMode;
+    e.target.classList.toggle('on', state.editMode);
+    e.target.textContent = state.editMode ? 'Done editing' : 'Edit hotspots';
+    els.modeFlag.classList.toggle('edit', state.editMode);
+    els.modeFlagText.textContent = state.editMode ? 'Editing — click room to place a hotspot' : 'Viewing tour';
+    renderHotspotInventory();
+  });
+  if(els.btnAddHotspotList){
+    els.btnAddHotspotList.addEventListener('click', ()=>{
+      if(!state.editMode){
+        state.editMode = true;
+        els.btnEditMode.classList.add('on');
+        els.btnEditMode.textContent = 'Done editing';
+        els.modeFlag.classList.add('edit');
+        els.modeFlagText.textContent = 'Editing — click room to place a hotspot';
+      }
+      renderHotspotInventory();
+      alert('Tap or click the room preview to place a new hotspot.');
+    });
+  }
+  document.getElementById('btnResetView').addEventListener('click', ()=>{
+    const sc = currentScene();
+    if (sc) {
+      state.lon = sc.initialLon !== undefined ? sc.initialLon : -90;
+      state.lat = sc.initialLat !== undefined ? sc.initialLat : 0;
+    } else {
+      state.lon = -90; 
+      state.lat = 0; 
+    }
+    state.fov = 78;
+  });
+  document.getElementById('btnAltStyle').addEventListener('click', openAltModal);
+  els.variantRange.addEventListener('input', ()=>{
+    const sc = currentScene();
+    if(!sc || !sc.alt || !sc.alt.image) return;
+    sc.alt.active = els.variantRange.value === '1';
+    els.variantCurrent.textContent = sc.alt.active ? (sc.alt.labelB || 'Alternate') : (sc.alt.labelA || 'Original');
+    persistScene(sc);
+    setTextureForCurrentScene();
+  });
+  els.variantRange.style.pointerEvents = 'none';
+  els.variantRange.style.touchAction = 'none';
+  els.variantRange.parentElement.addEventListener('click', function(e){
+    const sc = currentScene();
+    if(!sc || !sc.alt || !sc.alt.image) return;
+    e.preventDefault();
+    els.variantRange.value = els.variantRange.value === '1' ? '0' : '1';
+    els.variantRange.dispatchEvent(new Event('input', { bubbles:true }));
+  });
+  document.getElementById('btnExport').addEventListener('click', exportStandaloneTour);
+
+  /* ============ alternate style modal ============ */
+  const altBackdrop = document.getElementById('altBackdrop');
+  const altLabelAInput = document.getElementById('altLabelAInput');
+  const altLabelBInput = document.getElementById('altLabelBInput');
+  const altHeaderInput = document.getElementById('altHeaderInput');
+  const altPreviewWrap = document.getElementById('altPreviewWrap');
+  const altPreviewImg = document.getElementById('altPreviewImg');
+  const altRemove = document.getElementById('altRemove');
+  const altDrop = document.getElementById('altDrop');
+
+  function openAltModal(){
+    const sc = currentScene();
+    if(!sc) return;
+    altBackdrop.classList.add('show');
+    altHeaderInput.value = sc.alt?.header || 'Style switch';
+    altLabelAInput.value = sc.alt?.labelA || 'Original';
+    altLabelBInput.value = sc.alt?.labelB || 'Alternate';
+    if(sc.alt?.image){
+      altPreviewWrap.style.display = 'block';
+      altPreviewImg.src = sc.alt.image;
+      altRemove.style.display = 'inline-flex';
+    } else {
+      altPreviewWrap.style.display = 'none';
+      altPreviewImg.src = '';
+      altRemove.style.display = 'none';
+    }
+  }
+  altDrop.addEventListener('click', ()=> els.altFileInput.click());
+  els.altFileInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const dataUrl = await fileToCompressedDataURL(file);
+    const sc = currentScene();
+    if(!sc) return;
+    sc.alt = sc.alt || { image:null, header:'Style switch', labelA:'Original', labelB:'Alternate', active:false };
+    sc.alt.image = dataUrl;
+    altPreviewWrap.style.display = 'block';
+    altPreviewImg.src = dataUrl;
+    altRemove.style.display = 'inline-flex';
+    e.target.value = '';
+  });
+  altRemove.addEventListener('click', ()=>{
+    const sc = currentScene();
+    if(!sc) return;
+    sc.alt = { image:null, header:'Style switch', labelA:'Original', labelB:'Alternate', active:false };
+    persistScene(sc);
+    altPreviewWrap.style.display = 'none';
+    altPreviewImg.src = '';
+    altRemove.style.display = 'none';
+  });
+  document.getElementById('altCancel').addEventListener('click', ()=>{
+    altBackdrop.classList.remove('show');
+  });
+  document.getElementById('altSave').addEventListener('click', ()=>{
+    const sc = currentScene();
+    if(!sc) return;
+    sc.alt = sc.alt || { image:null, header:'Style switch', labelA:'Original', labelB:'Alternate', active:false };
+    sc.alt.header = altHeaderInput.value.trim() || 'Style switch';
+    sc.alt.labelA = altLabelAInput.value.trim() || 'Original';
+    sc.alt.labelB = altLabelBInput.value.trim() || 'Alternate';
+    if(!sc.alt.image){
+      alert('Upload an alternate room photo first.');
+      return;
+    }
+    persistScene(sc);
+    altBackdrop.classList.remove('show');
+    updateVariantSwitch();
+  });
+
+  /* ============ export standalone viewer ============ */
+  function exportStandaloneTour(){
+    const payload = {
+      scenes: state.scenes.map(s=>({
+        id:s.id, name:s.name, image:s.image, hotspots:s.hotspots||[],
+        mapX:s.mapX, mapY:s.mapY, mapHeading:s.mapHeading||0,
+        initialLon: s.initialLon !== undefined ? s.initialLon : -90,
+        initialLat: s.initialLat !== undefined ? s.initialLat : 0,
+        alt: s.alt || { image:null, header:'Style switch', labelA:'Original', labelB:'Alternate', active:false }
+      })),
+      floorplan: state.tour.floorplan || null,
+      branding: state.tour.branding || null
+    };
+    const json = JSON.stringify(payload).replace(/<\/script/gi, '<\\/script');
+    const html = TourFormat.build(payload);
+    const blob = new Blob([html], { type:'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'virtual-tour.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }
+
+  /* ============ boot ============ */
+// This file is injected inside the editor closure by the preparation script.
+  function editorPayload() {
+    return {scenes:state.scenes, floorplan:state.tour.floorplan, branding:state.tour.branding};
+  }
+  window.TourEditor = {
+    getData: () => TourData.validate(editorPayload()),
+    load: async payload => {
+      payload = TourData.validate(payload);
+      state.scenes = payload.scenes; state.scenes.forEach(normalizeScene);
+      state.currentId = state.scenes[0]?.id || null;
+      state.tour = {floorplan:payload.floorplan || null, floorplanW:0, floorplanH:0, branding:payload.branding || {image:null,position:'top-right',opacity:.92,scale:.16}};
+      state.editMode = false; state.clientPreview = false;
+      document.body.classList.remove('client-preview');
+      document.getElementById('btnExitPreview').style.display = 'none';
+      document.querySelectorAll('.hotspot,.note-pop').forEach(node => node.remove());
+      state.lon = state.scenes[0]?.initialLon ?? -90; state.lat = state.scenes[0]?.initialLat ?? 0;
+      applyBrandingOverlay(); renderMinimapShell(); renderStrip(); refreshViewerState(); resizeRenderer();
+    }
+  };
+  const replacement = document.createElement('input'); replacement.type = 'file'; replacement.accept = 'image/jpeg,image/png,image/webp'; replacement.hidden = true; document.body.append(replacement);
+  const replaceButton = document.createElement('button'); replaceButton.className = 'btn ghost'; replaceButton.textContent = 'Replace room image';
+  document.getElementById('btnNewScene').after(replaceButton);
+  replaceButton.onclick = () => { if (currentScene()) replacement.click(); else alert('Add a room first.'); };
+  replacement.onchange = async () => {
+    const sc = currentScene(), file = replacement.files[0]; if (!sc || !file) return;
+    try { sc.image = await fileToCompressedDataURL(file); await persistScene(sc); setTextureForCurrentScene(); renderStrip(); }
+    catch(error) { alert(error.message || 'The panorama could not be read.'); }
+    replacement.value = '';
+  };
+
+  initThree();
+  renderStrip(); refreshViewerState();
+
+})();
+</script>
+</body>
+</html>
+

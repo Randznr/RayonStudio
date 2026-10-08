@@ -1,0 +1,47 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Album admin | RAYON Studio</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="albums.css">
+  <link rel="stylesheet" href="admin.css">
+  <script src="admin.js" defer></script>
+<link rel="stylesheet" href="branding.css"></head>
+<body>
+  <header class="header site-header"><a class="site-brand" href="index.html" aria-label="Rayon Studio home"><img class="site-brand-logo" src="Images/RAYONSLOGO copy.png" alt=""><span class="site-brand-name">RAYON<small>STUDIO</small></span></a><a href="tour-admin.html">Virtual tour admin</a><a href="albums.html">View public gallery</a></header>
+  <main class="section admin-main">
+    <p class="eyebrow">STUDIO ADMIN</p><h1>Manage project albums</h1>
+    <form id="login" class="admin-panel">
+      <h2>Connect your GitHub repository</h2>
+      <p>Use a GitHub access token as your admin password. It stays in memory until you sign out or close this page.</p>
+      <label>Repository <input id="repository" placeholder="your-username/your-repository" required autocomplete="off" pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"></label>
+      <label>Publishing branch <input id="branch" value="main" required autocomplete="off"></label>
+      <label>GitHub access token <input id="token" type="password" required autocomplete="off" spellcheck="false"></label>
+      <p class="admin-help">Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">fine-grained token</a> for this repository only, with <strong>Contents: Read and write</strong>. Your website files must be at the root of the publishing branch.</p>
+      <button class="album-action" type="submit">Sign in</button>
+    </form>
+    <p id="admin-status" role="status" aria-live="polite"></p>
+    <section id="workspace" hidden>
+      <div class="gallery-controls"><button id="publish" class="album-action">Publish changes</button><button id="import-local" class="album-action">Import previous browser albums</button><button id="logout" class="album-action">Sign out</button></div>
+      <p>Changes remain drafts in this tab until you publish. Publishing saves the images and albums together; GitHub Pages may take a few minutes to update.</p>
+      <form id="create" class="album-form">
+        <label>Category <select id="project"><option value="project-0">Residential projects</option><option value="project-2">Commercial interiors</option><option value="project-1">Architectural visualisation</option><option value="project-3">Detail studies</option></select></label>
+        <label>Album title <input id="album-title" required maxlength="120" placeholder="Project name"></label>
+        <button class="album-action" type="submit">Create album</button>
+      </form>
+      <label>Manage album <select id="album-select"></select></label>
+      <div id="album-editor" hidden>
+        <form id="rename" class="album-form"><label>Album title <input id="rename-title" required maxlength="120"></label><button class="album-action" type="submit">Rename album</button></form>
+        <div class="gallery-controls"><label class="album-action upload-label">Add images<input id="upload" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple></label><button id="delete-album" class="album-action">Remove album</button></div>
+        <p class="admin-help">JPEG, PNG, WebP, AVIF or GIF, up to 10 MB per image. The first image is the album cover.</p>
+        <div id="admin-gallery" class="gallery-grid"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+
