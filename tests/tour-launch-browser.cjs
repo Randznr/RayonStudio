@@ -9,10 +9,11 @@ const server=http.createServer((req,res)=>{try{const file=path.join(root,decodeU
  try{
   const page=await browser.newPage();const errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async d=>{dialogs.push(d.message());await d.accept();});
   const files=new Map(['tours/catalog.json','tours/sample.html'].map(file=>[file,fs.readFileSync(path.join(root,file),'utf8')]));
-  const blobs=new Map(),trees=new Map(),commits=new Map();let head='initial',counter=0,serveCurrent=false,writes=0;
+  const blobs=new Map(),trees=new Map(),commits=new Map();let head='initial',counter=0,serveCurrent=false,writes=0,denyWrite=true;
   await page.route('https://api.github.com/**',async route=>{
    const req=route.request(),url=new URL(req.url()),endpoint=url.pathname.replace('/repos/owner/site',''),method=req.method(),body=method==='GET'?null:req.postDataJSON();let result,status=200;
    if(method!=='GET')writes++;
+   if(method==='POST'&&denyWrite){await route.fulfill({status:403,contentType:'application/json',body:JSON.stringify({message:'Resource not accessible by personal access token'})});return;}
    if(endpoint==='')result={permissions:{push:true}};
    else if(endpoint.startsWith('/git/ref/heads/'))result={object:{sha:head}};
    else if(endpoint.startsWith('/git/commits/')&&method==='GET')result={tree:{sha:'base-tree'}};
@@ -38,8 +39,17 @@ const server=http.createServer((req,res)=>{try{const file=path.join(root,decodeU
   await page.waitForFunction(()=>document.querySelector('#tour-editor').contentDocument.querySelector('#sceneCount').textContent==='2 rooms');
   await page.locator('#tour-save-draft').click();await page.waitForFunction(()=>document.querySelector('#draft-status').textContent.includes('Draft saved'));
   const drafts=await page.evaluate(()=>TourDrafts.list('owner/site:main'));assert.equal(drafts.length,1);assert(!JSON.stringify(drafts).includes('test-secret-token'));
-  await page.locator('#tour-logout').click();await login();await page.locator('details summary').click();await page.locator('#tour-drafts').selectOption(drafts[0].key);await page.locator('#tour-restore-draft').click();
+  await page.locator('#tour-logout').click();await login();await page.getByText('Restore a saved browser draft',{exact:true}).click();await page.locator('#tour-drafts').selectOption(drafts[0].key);await page.locator('#tour-restore-draft').click();
   await page.waitForFunction(()=>document.querySelector('#tour-title').value==='Launch test client');
+  for(const width of [390,1440]){
+   await page.setViewportSize({width,height:900});
+   await page.waitForFunction(()=>{const frame=document.querySelector('#tour-editor');return Math.abs(frame.clientHeight-frame.contentDocument.body.getBoundingClientRect().height)<3;});
+   const layout=await editor.locator('body').evaluate(body=>({height:body.scrollHeight,viewport:innerHeight}));assert(layout.height<=layout.viewport+3,'Editor must not scroll vertically inside a box');
+  }
+  await page.locator('#tour-publish').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Resource not accessible by personal access token'));
+  assert((await page.locator('#tour-status').textContent()).includes('Contents: Read and write'));
+  await page.getByText('Fix GitHub publishing access',{exact:true}).click();await page.locator('#tour-replacement-token').fill('replacement-test-token');await page.locator('#tour-update-token').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Token replaced'));
+  assert.equal(await editor.locator('#sceneCount').textContent(),'2 rooms');denyWrite=false;
   await page.locator('#tour-publish').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Tour published to GitHub'));
   const url=await page.locator('#tour-link').inputValue(),id=JSON.parse(files.get('tours/catalog.json')).tours.find(t=>t.id!=='sample').id;
   assert(files.has('tours/data/'+id+'.json'));assert(files.get('tours/client-'+id+'.html').includes('rayon-revision'));assert(!files.get('tours/client-'+id+'.html').includes('test-secret-token'));

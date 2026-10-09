@@ -10,7 +10,17 @@
   function changed() { dirty=true; status('Unpublished tour changes. Publish or download a backup before leaving.'); }
   async function api(path, method='GET', body) {
     const response = await fetch('https://api.github.com/repos/' + repo + path, {method, headers:{Authorization:'Bearer '+token, Accept:'application/vnd.github+json','Content-Type':'application/json'}, ...(body?{body:JSON.stringify(body)}:{})});
-    if(!response.ok) throw new Error(response.status===401?'Your GitHub token is invalid or expired.':response.status===404?'Repository, branch, or tour file not found. Upload the complete website first.':response.status===403?'GitHub denied access. Check Contents write permission and branch rules.':'GitHub request failed ('+response.status+'). Your drafts are still in this tab.');
+    if(!response.ok) {
+      const detail=await response.json().catch(()=>({}));
+      const message=String(detail.message||'').slice(0,600);
+      let help='Your draft is still open. Save a browser draft or download a backup before signing out.';
+      if(response.status===401)help='Your token is invalid or expired. Replace it below without closing your draft.';
+      else if(response.status===429||/rate limit|abuse/i.test(message))help='GitHub temporarily limited requests. Wait before trying again; your draft is still open.';
+      else if(/protected|rule|hook declined/i.test(message))help='GitHub blocked this branch update. Review the publishing branch rules with the repository owner; your draft is still open.';
+      else if(response.status===403)help='Check that your fine-grained token selects '+repo+' and has Repository permissions > Contents: Read and write (not read-only). Save the token permissions, then replace the token below if needed. Your draft is still open.';
+      else if(response.status===404)help='Check repository access, branch name and that the complete website has been uploaded.';
+      throw new Error('GitHub '+response.status+' during '+method+' '+path.split('?')[0]+': '+(message||response.statusText)+'. '+help);
+    }
     return response.json();
   }
   function decode(content) { return new TextDecoder().decode(Uint8Array.from(atob(content.replace(/\s/g,'')),char=>char.charCodeAt(0))); }
@@ -32,7 +42,17 @@
     return new Promise((resolve,reject)=>{
       const frame=$('#tour-editor');
       const timeout=setTimeout(()=>reject(new Error('The editor took too long to load. Refresh and try again.')),20000);
-      frame.onload=()=>{clearTimeout(timeout);if(frame.contentWindow.TourEditor) resolve();else reject(new Error('The editor could not load. Check that all website files were uploaded.'));};
+      frame.onload=()=>{
+        clearTimeout(timeout);
+        if(!frame.contentWindow.TourEditor){reject(new Error('The editor could not load. Check that all website files were uploaded.'));return;}
+        const doc=frame.contentDocument;
+        const style=doc.createElement('style');
+        style.textContent='html,body{min-height:0!important;background:transparent!important}body{display:flow-root}.wrap{max-width:none;padding-left:0;padding-right:0}';
+        doc.head.append(style);
+        const resize=()=>{const height=Math.ceil(doc.body.getBoundingClientRect().height);if(height>0)frame.style.height=height+'px';};
+        new frame.contentWindow.ResizeObserver(resize).observe(doc.body);
+        resize();resolve();
+      };
       frame.src='tour-editor.html';frame.hidden=false;
     });
   }
@@ -68,6 +88,12 @@
     await editor().load({scenes:[],floorplan:null,branding:null});$('#tour-title').value=active.title;renderList();share();changed();
   }
   $('#tour-new').onclick=newTour;
+  $('#tour-update-token').onclick=async()=>{
+    const replacement=$('#tour-replacement-token').value.trim();if(!replacement){status('Enter the replacement token first.');return;}
+    const previous=token;lock(true);token=replacement;$('#tour-replacement-token').value='';
+    try{const repository=await api('');if(!repository.permissions?.push)throw new Error('Your GitHub account needs write access.');status('Token replaced. Your draft is unchanged. Try Publish tour again to verify write access.');}
+    catch(error){token=previous;status(error.message);}finally{lock(false);}
+  };
   $('#tour-title').oninput=changed;
   window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===$('#tour-editor').contentWindow&&event.data?.type==='rayon-tour-changed'&&token&&!busy)changed();});
   window.addEventListener('message',event=>{
