@@ -7,7 +7,7 @@
 
     '<style>' +
     'html,body{margin:0;height:100%;background:#1a1815;font-family:Inter,sans-serif;overflow:hidden;}' +
-    '#c{width:100%;height:100%;display:block;cursor:grab;}' +
+    '#c{width:100%;height:100%;display:block;cursor:grab;touch-action:none;}' +
     '.hs{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;border:2px solid #faf7f1;box-shadow:0 3px 10px rgba(0,0,0,.4);cursor:pointer;}' +
     '.hs.note{background:#b08a4e;} .hs.link{background:#5f6e4f;}' +
     '.lbl{position:absolute;bottom:125px;left:16px;font-family:Fraunces,serif;font-style:italic;color:#faf7f1;background:rgba(34,31,26,.5);padding:7px 14px;border-radius:2px;font-size:16px;}' +
@@ -120,7 +120,11 @@
       var sphere = new THREE.Mesh(geo, mat); scene3.add(sphere);
       function resize(){ renderer.setSize(window.innerWidth, window.innerHeight, false); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); }
       window.addEventListener('resize', resize); resize();
+      var loadVersion = 0;
       function loadScene(i){
+        var version=++loadVersion;
+        document.querySelectorAll('.hs,.pop').forEach(function(node){node.remove();});
+        document.getElementById('tour-help').textContent='Loading room…';
         cur = i; 
         var s = scenes[i];
         lon = s.initialLon !== undefined ? s.initialLon : -90; 
@@ -135,12 +139,14 @@
         }
         var loader = new THREE.TextureLoader();
         loader.load(src, function(tex){
+          if(version!==loadVersion){tex.dispose();return;}
           if(sphere.material.map) sphere.material.map.dispose();
           sphere.material.map = tex;
           sphere.material.color.set(0xffffff);
           sphere.material.needsUpdate = true;
+          document.getElementById('tour-help').textContent='Drag to look around. Scroll to zoom. Select a room below.';
           if(fadeEl){ requestAnimationFrame(function(){ fadeEl.style.opacity = '0'; }); }
-        });
+        }, undefined, function(){if(version===loadVersion){document.getElementById('tour-help').textContent='This room could not load. Select another room or refresh to try again.';if(fadeEl)fadeEl.style.opacity='0';}});
         document.getElementById('lbl').textContent = s.name;
         renderStrip();
         renderMinimap();
@@ -149,7 +155,7 @@
       function renderStrip(){
         var strip = document.getElementById('strip'); strip.innerHTML='';
         scenes.forEach(function(s,i){
-          var d = document.createElement('div');
+          var d = document.createElement('button');d.type='button';d.title=s.name;d.setAttribute('aria-label','View '+s.name);d.setAttribute('aria-pressed',String(i===cur));d.style.padding='0';
           d.className = 'sw'+(i===cur?' on':'');
           d.innerHTML = '<img src="'+s.image+'">';
           d.addEventListener('click', function(){ loadScene(i); });
@@ -171,6 +177,7 @@
       canvas.addEventListener('pointerdown', function(e){ down=true; dragged=false; dx0=e.clientX; dy0=e.clientY; lon0=lon; lat0=lat; canvas.style.cursor='grabbing'; });
       window.addEventListener('pointermove', function(e){ if(!down) return; var dx=e.clientX-dx0, dy=e.clientY-dy0; if(Math.abs(dx)>3||Math.abs(dy)>3) dragged=true; lon = lon0 - dx*0.18; lat = Math.max(-85, Math.min(85, lat0 + dy*0.18)); });
       window.addEventListener('pointerup', function(e){ if(!down) return; down=false; canvas.style.cursor='grab'; if(!dragged) handleClick(e); });
+      canvas.addEventListener('pointercancel',function(){down=false;canvas.style.cursor='grab';});
       canvas.addEventListener('wheel', function(e){ e.preventDefault(); fov = Math.max(32, Math.min(96, fov + e.deltaY*0.04)); }, {passive:false});
       var variantRange = document.getElementById('variantRange');
       variantRange.addEventListener('input', function(){
@@ -277,7 +284,14 @@
   }
 
 
-window.TourFormat = {build(payload){return buildViewerHtml(JSON.stringify(TourData.validate(payload)).replace(/</g, '\\u003c'));}};
+window.TourFormat = {build(payload){
+  const data=TourData.validate(payload);
+  const escape=value=>String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  let html=buildViewerHtml(JSON.stringify(data).replace(/</g,'\\u003c'));
+  html=html.replace('<title>RAYON Studio | Virtual Tour</title>','<title>'+escape(data.title||'RAYON Studio')+' | Virtual Tour</title>');
+  if(data.revision)html=html.replace('<meta name="robots"','<meta name="rayon-revision" content="'+data.revision+'"><meta name="robots"');
+  return html;
+}};
 })();
 
 

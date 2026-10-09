@@ -40,6 +40,8 @@ References: [GitHub Pages publishing sources](https://docs.github.com/en/pages/g
 
 ## Virtual tours
 
+Use [TOUR-LAUNCH.md](TOUR-LAUNCH.md) for the current launch workflow, saved browser drafts, source files, live-link verification and taking client tours offline.
+
 Open `tour-admin.html` (also linked from album admin) and sign in using the same repository, branch and token. Upload the entire website first, including `assets/vendor`, `tour-editor.html`, the tour scripts, and `tours/catalog.json`.
 
 - **Public sample:** select “Public sample” and replace the illustrative panoramas with your own. Both public tour landing pages and the older sample URLs open `tours/sample.html`.
@@ -47,7 +49,7 @@ Open `tour-admin.html` (also linked from album admin) and sign in using the same
 - **Import/edit:** import a RAYON exported HTML tour or the JSON backup. Only tour data is read; scripts in imported HTML are never executed. Other vendors' HTML exports and ZIP packages are not supported.
 - **Preview/publish:** Client preview opens the actual view-only viewer. Publish tour commits that viewer and its catalog entry together. No editing interface or credentials are included in the exported viewer. Wait for GitHub Pages to deploy before sharing.
 - **Share:** confirm your actual live website address, then copy the direct link or download its QR code as SVG. QR generation happens locally. Updating a tour preserves its ID, viewing link and QR code. A new tour receives a separate random ID. Client tours are never listed on public landing pages.
-- **Backup:** Download editable backup before closing the tab or reloading. Drafts are in memory. A changed repository branch blocks publishing; download the backup, sign in again, select the correct tour, and import the backup to retry against the latest revision. Tours must be under 40 MB for publishing.
+- **Backup:** Download editable backup before closing the tab or reloading. Unsaved edits are in memory; Save browser draft stores a project on this browser/device. A changed repository branch blocks publishing; download the backup, sign in again, select the correct tour, and import the backup to retry against the latest revision. Tours must be under 40 MB for publishing.
 
 Client tours are **unlisted, not confidential or authenticated**. Anyone with a link can view them, and files/catalog entries can be discovered in a public GitHub repository. The noindex directive asks search engines not to index viewers; it is not access control. True client passwords or expiring access require another hosting/authentication service. GitHub enforces your permission to publish, even though the static admin files themselves are accessible.
 

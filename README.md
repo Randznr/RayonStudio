@@ -1,4 +1,4 @@
-﻿# RAYONS Studio website
+# RAYONS Studio website
 
 Open this folder in Visual Studio using **File → Open → Folder**, or in Visual Studio Code. This is a static HTML/CSS/JavaScript website with no build step, package installation, or framework required. Open `index.html` in a browser to preview it. For hosting, upload the entire folder to a static web host.
 
@@ -26,3 +26,7 @@ The site intentionally uses graphic placeholders and a CSS architectural illustr
 Colours are controlled by variables at the top of `styles.css`: charcoal `#1d1e1d`, soft white `#f7f8f5`, muted teal `#a2c4be`. Navigation collapses on mobile; project filters work without dependencies. The tour loads only after visitors leave the main page.
 
 
+
+## Virtual tour launch
+
+Open [tour-admin.html](tour-admin.html) to create or edit tours. See [TOUR-LAUNCH.md](TOUR-LAUNCH.md) for the upload, draft, publish, verify and share workflow. Published client viewers and editable project files are created automatically under tours/.

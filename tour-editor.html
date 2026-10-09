@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta name="robots" content="noindex,nofollow"><script>if(window.parent===window)location.replace("tour-admin.html");</script><script src="tour-data.js"></script><script src="tour-format.js"></script>
+<head><meta name="robots" content="noindex,nofollow"><script>if(window.parent===window)location.replace("tour-admin.html");</script><script src="tour-data.js?v=launch1"></script><script src="tour-format.js?v=launch1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Rayon Studio — 360° walkthroughs for interior staging</title>
@@ -571,7 +571,7 @@
   </div>
 </div>
 
-<input type="file" id="fileInput" accept="image/*" style="display:none;">
+<input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
 <input type="file" id="altFileInput" accept="image/*" style="display:none;">
 
 <!-- hotspot create/edit modal -->
@@ -1106,6 +1106,12 @@
   /* ============ scenes ============ */
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
+  async function checkPanorama(file){
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20*1024*1024)throw new Error('Choose a JPEG, PNG or WebP panorama up to 20 MB.');
+    const bitmap=await createImageBitmap(file);
+    const ratio=bitmap.width/bitmap.height;bitmap.close();
+    if(Math.abs(ratio-2)>.04)throw new Error('Room images must be 2:1 equirectangular panoramas (for example 4000 × 2000).');
+  }
   function fileToCompressedDataURL(file){
     return new Promise((resolve, reject)=>{
       const reader = new FileReader();
@@ -1136,6 +1142,8 @@
   }
 
   async function addSceneFromFile(file){
+    if(state.scenes.length>=100)throw new Error('A tour can contain up to 100 rooms.');
+    await checkPanorama(file);
     const dataUrl = await fileToCompressedDataURL(file);
     const n = state.scenes.length + 1;
     const scene = {
@@ -1761,9 +1769,12 @@
   });
   
   els.fileInput.addEventListener('change', async (e)=>{
-    const file = e.target.files[0];
-    if(file) await addSceneFromFile(file);
-    e.target.value = '';
+    const files=Array.from(e.target.files);
+    window.parent.postMessage({type:'rayon-editor-busy',busy:true},location.origin);
+    document.querySelector('.toolbar').inert=true;
+    try{for(const file of files)await addSceneFromFile(file);}
+    catch(error){alert(error.message||'The image could not be read. Previously added rooms are still in your draft.');}
+    finally{e.target.value='';document.querySelector('.toolbar').inert=false;window.parent.postMessage({type:'rayon-editor-busy',busy:false},location.origin);}
   });
   document.getElementById('btnEditMode').addEventListener('click', (e)=>{
     state.editMode = !state.editMode;
@@ -1924,7 +1935,10 @@
       state.scenes = payload.scenes; state.scenes.forEach(normalizeScene);
       state.currentId = state.scenes[0]?.id || null;
       state.tour = {floorplan:payload.floorplan || null, floorplanW:0, floorplanH:0, branding:payload.branding || {image:null,position:'top-right',opacity:.92,scale:.16}};
+      draftStore.clear();
       state.editMode = false; state.clientPreview = false;
+      els.btnEditMode.classList.remove('on'); els.btnEditMode.textContent='Edit hotspots';
+      els.modeFlag.classList.remove('edit');els.modeFlagText.textContent='Viewing tour';
       document.body.classList.remove('client-preview');
       document.getElementById('btnExitPreview').style.display = 'none';
       document.querySelectorAll('.hotspot,.note-pop').forEach(node => node.remove());
@@ -1938,9 +1952,11 @@
   replaceButton.onclick = () => { if (currentScene()) replacement.click(); else alert('Add a room first.'); };
   replacement.onchange = async () => {
     const sc = currentScene(), file = replacement.files[0]; if (!sc || !file) return;
-    try { sc.image = await fileToCompressedDataURL(file); await persistScene(sc); setTextureForCurrentScene(); renderStrip(); }
+    window.parent.postMessage({type:'rayon-editor-busy',busy:true},location.origin);
+    try { await checkPanorama(file); sc.image = await fileToCompressedDataURL(file); await persistScene(sc); setTextureForCurrentScene(); renderStrip(); }
     catch(error) { alert(error.message || 'The panorama could not be read.'); }
     replacement.value = '';
+    window.parent.postMessage({type:'rayon-editor-busy',busy:false},location.origin);
   };
 
   initThree();
