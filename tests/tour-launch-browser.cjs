@@ -29,11 +29,12 @@ const server=http.createServer((req,res)=>{try{const file=path.join(root,decodeU
   async function login(){await page.goto(base+'/tour-admin.html');await page.locator('#tour-repo').fill('owner/site');await page.locator('#tour-token').fill('test-secret-token');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Editing the public sample'));}
   await login();await page.locator('#tour-new').click();await page.locator('#tour-title').fill('Launch test client');
   const editor=page.frameLocator('#tour-editor');
-  await editor.locator('#fileInput').setInputFiles(path.join(root,'Images/RAYONSLOGO copy.png'));
-  await page.waitForFunction(()=>!document.querySelector('#tour-publish').disabled);assert(dialogs.some(t=>t.includes('2:1')));
+  await editor.locator('#fileInput').setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('not an image')});
+  await page.waitForFunction(()=>!document.querySelector('#tour-publish').disabled);assert(dialogs.some(t=>t.includes('JPEG, PNG or WebP')));
   const sample=JSON.parse(fs.readFileSync(path.join(root,'tours/sample-source.json'),'utf8'));
   const buffer=Buffer.from(sample.scenes[0].image.split(',')[1],'base64');
-  await editor.locator('#fileInput').setInputFiles([{name:'Lounge.jpg',mimeType:'image/jpeg',buffer},{name:'Study.jpg',mimeType:'image/jpeg',buffer}]);
+  const wideImage=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=900;canvas.getContext('2d').fillRect(0,0,1600,900);return canvas.toDataURL('image/jpeg').split(',')[1];});
+  await editor.locator('#fileInput').setInputFiles([{name:'Lounge.jpg',mimeType:'image/jpeg',buffer:Buffer.from(wideImage,'base64')},{name:'Study.jpg',mimeType:'image/jpeg',buffer}]);
   await page.waitForFunction(()=>document.querySelector('#tour-editor').contentDocument.querySelector('#sceneCount').textContent==='2 rooms');
   await page.locator('#tour-save-draft').click();await page.waitForFunction(()=>document.querySelector('#draft-status').textContent.includes('Draft saved'));
   const drafts=await page.evaluate(()=>TourDrafts.list('owner/site:main'));assert.equal(drafts.length,1);assert(!JSON.stringify(drafts).includes('test-secret-token'));
@@ -50,6 +51,6 @@ const server=http.createServer((req,res)=>{try{const file=path.join(root,decodeU
   await page.locator('#tour-logout').click();await login();await page.locator('#tour-select').selectOption(id);await page.waitForFunction(()=>document.querySelector('#tour-title').value==='Launch test client');
   await page.locator('#tour-publish').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Tour published to GitHub'));assert.equal(await page.locator('#tour-link').inputValue(),url);
   const before=writes;head='changed-elsewhere';await page.locator('#tour-title').fill('Conflicting edit');await page.locator('#tour-publish').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('repository changed'));assert.equal(writes,before);
-  assert.deepEqual(errors,[]);console.log('PASS: bulk panoramas, invalid image rejection, persistent draft restore, atomic source/viewer publication, stale/live checks, QR, offline/reopen and republish with stable link, conflict protection.');
+  assert.deepEqual(errors,[]);console.log('PASS: 16:9 and 2:1 bulk panoramas, invalid file rejection, persistent draft restore, atomic source/viewer publication, stale/live checks, QR, offline/reopen and republish with stable link, conflict protection.');
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);server.close();process.exitCode=1;});

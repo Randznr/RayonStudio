@@ -11,7 +11,7 @@ The repository and branch are prefilled: `Randznr/RayonStudio`, `main`. Create a
 ## Publish a client tour
 
 1. Select **New client tour** and enter the project title.
-2. Select **Add room photo**. You can select multiple JPEG, PNG or WebP panoramas at once. Each must be a 2:1 equirectangular panorama, up to 20 MB. Ordinary interior photos do not become 360 panoramas simply by uploading them.
+2. Select **Add room photo**. You can select multiple JPEG, PNG or WebP panoramas at once. Each can be up to 20 MB. All image proportions are accepted, including 16:9. A 2:1 equirectangular panorama (width x height, for example 4000 x 2000) is recommended for a full sphere; other proportions may look stretched. Ordinary interior photos do not become 360 panoramas simply by uploading them.
 3. Double-click a room thumbnail to rename it. Use **Replace room image**, **Edit hotspots**, **Floor plan & map**, **Branding**, **Alt style** and **Set start view** as needed. Link hotspots connect rooms; note hotspots explain details.
 4. Select **Client preview** to check exactly what visitors will see. They have no upload or editing controls.
 5. Select **Save browser draft** to save work on this browser/device, or **Download editable backup** for a portable JSON copy. Neither publishes the tour.
