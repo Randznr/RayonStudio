@@ -3,6 +3,7 @@
     return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>RAYON Studio | Virtual Tour</title><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">' +
+    '<script src="../site-features.js" defer><\/script><script src="../tour-controls.js"><\/script>' +
     '<script src="../assets/vendor/three.min.js"><\/script>' +
 
     '<style>' +
@@ -118,10 +119,16 @@
       var geo = new THREE.SphereGeometry(500,60,40); geo.scale(-1,1,1);
       var mat = new THREE.MeshBasicMaterial({color:0x2b2721});
       var sphere = new THREE.Mesh(geo, mat); scene3.add(sphere);
-      function resize(){ renderer.setSize(window.innerWidth, window.innerHeight, false); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); }
+      function resize(){ if(renderer.xr.isPresenting) return; renderer.setSize(window.innerWidth, window.innerHeight, false); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); }
       window.addEventListener('resize', resize); resize();
+      var controls = window.RayonTourControls ? window.RayonTourControls({
+        renderer: renderer, camera: camera, scene: scene3, canvas: canvas,
+        onManual: function(dir) { lon = THREE.MathUtils.radToDeg(Math.atan2(dir.z, dir.x)); lat = THREE.MathUtils.radToDeg(Math.asin(Math.max(-1, Math.min(1, dir.y)))); },
+        onNextRoom: function() { loadScene((cur + 1) % scenes.length); }
+      }) : null;
       var loadVersion = 0;
       function loadScene(i){
+        if (controls) controls.reset();
         var version=++loadVersion;
         document.querySelectorAll('.hs,.pop').forEach(function(node){node.remove();});
         document.getElementById('tour-help').textContent='Loading room…';
@@ -201,10 +208,10 @@
         var ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera);
       }
       function animate(){
-        requestAnimationFrame(animate);
+
         var phi = THREE.MathUtils.degToRad(90-lat), theta = THREE.MathUtils.degToRad(lon);
         var target = new THREE.Vector3(500*Math.sin(phi)*Math.cos(theta), 500*Math.cos(phi), 500*Math.sin(phi)*Math.sin(theta));
-        camera.lookAt(target); camera.fov = fov; camera.updateProjectionMatrix();
+        if (!renderer.xr.isPresenting) { camera.lookAt(target); camera.fov = fov; camera.updateProjectionMatrix(); if (controls) controls.update(); }
         renderer.render(scene3, camera);
         updateHotspots();
         updateCone();
@@ -278,7 +285,7 @@
         });
       }
       if(scenes.length){ loadScene(0); }
-      animate();
+      renderer.setAnimationLoop(animate);
     })();
     `;
   }

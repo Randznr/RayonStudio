@@ -90,7 +90,7 @@ test('concurrent repository changes prevent publication and retain drafts', asyn
   app.changeHead(); await app.$('#publish').onclick();
   assert.match(app.$('#admin-status').textContent, /repository has changed/);
   assert.equal(app.calls.some(call => call.method !== 'GET'), false);
-  assert.equal(app.$('#album-select').children[0].textContent, 'Draft');
+  assert.equal(app.$('#album-select').children.find(option => option.value === app.$('#album-select').value).textContent, 'Draft');
 });
 test('public gallery shows published covers and no editing controls', async () => {
   const data = {albums:[{id:'a',title:'Residence',project:'project-0'}, {id:'empty',title:'Empty',project:'project-0'}], photos:[{id:'p',album:'a',name:'Living room',src:'assets/albums/room.jpg'}]};

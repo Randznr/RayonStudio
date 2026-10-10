@@ -51,7 +51,7 @@ const server=http.createServer((req,res)=>{try{const file=path.join(root,decodeU
   await page.getByText('Fix GitHub publishing access',{exact:true}).click();await page.locator('#tour-replacement-token').fill('replacement-test-token');await page.locator('#tour-update-token').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Token replaced'));
   assert.equal(await editor.locator('#sceneCount').textContent(),'2 rooms');denyWrite=false;
   await page.locator('#tour-publish').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Tour published to GitHub'));
-  const url=await page.locator('#tour-link').inputValue(),id=JSON.parse(files.get('tours/catalog.json')).tours.find(t=>t.id!=='sample').id;
+  const url=await page.locator('#tour-link').inputValue(),id=new URL(url).pathname.match(/client-([\w-]+)\.html$/)[1];
   assert(files.has('tours/data/'+id+'.json'));assert(files.get('tours/client-'+id+'.html').includes('rayon-revision'));assert(!files.get('tours/client-'+id+'.html').includes('test-secret-token'));
   await page.locator('#tour-check-live').click();await page.waitForFunction(()=>document.querySelector('#tour-live-status').textContent.includes('older version'));
   serveCurrent=true;await page.locator('#tour-check-live').click();await page.waitForFunction(()=>document.querySelector('#tour-live-status').textContent.includes('Ready to share'));

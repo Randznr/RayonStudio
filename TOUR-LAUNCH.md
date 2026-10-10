@@ -52,4 +52,14 @@ This is a GitHub Pages site: GitHub's API is the authenticated publishing/storag
 
 ## Checks before sending a real client link
 
+### Looking around and VR
+
+Visitors can drag with a mouse, swipe on a touchscreen, or select **Enable motion** and grant sensor permission to look around by moving their phone. Dragging switches back to manual control. Motion controls require HTTPS and a device/browser that supplies orientation data. Permission denial or missing sensors leaves manual controls available.
+
+**Enter VR** starts an immersive WebXR session on a supported headset/browser over HTTPS. Each eye is rendered through Three.js WebXR with headset tracking. A controller trigger advances to the next room; exit with the headset's system menu or **Exit VR**. The button shows **VR unavailable** when the browser cannot offer an immersive session. Ordinary photos remain panoramas rather than reconstructed 3D spaces. Physical headset and phone checks are required before promising compatibility with a particular device.
+
+The controls are available in client preview, the public sample, and generated client tours. After changing the viewer generator, run `node tools/refresh-viewers.cjs` to upgrade existing active viewers while retaining their tour data. Offline notices are left intact.
+
+The shared `site-features.js` adds the WhatsApp link for +267 74074086 and suppresses the context menu and image dragging. This discourages casual copying; it does not prevent downloading content, taking screenshots, or inspecting source.
+
 Preview each room, hotspot and alternate style, publish, run **Check live link**, and open the viewing URL on a phone or a signed-out browser. Scan the QR with a phone camera. Back up the editable project. The sample is an illustrative demo; replace it with approved portfolio panoramas when ready.

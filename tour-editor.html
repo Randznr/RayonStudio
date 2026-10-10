@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta name="robots" content="noindex,nofollow"><script>if(window.parent===window)location.replace("tour-admin.html");</script><script src="tour-data.js?v=launch1"></script><script src="tour-format.js?v=launch1"></script>
+<head><meta name="robots" content="noindex,nofollow"><script>if(window.parent===window)location.replace("tour-admin.html");</script><script src="tour-data.js?v=launch1"></script><script src="tour-format.js?v=motion1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Rayon Studio — 360° walkthroughs for interior staging</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,440;9..144,560;9..144,650&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="assets/vendor/three.min.js"></script>
+<script src="assets/vendor/three.min.js"></script><script src="tour-controls.js"></script>
 <style>
   :root{
     --ink:#221f1a;
@@ -448,6 +448,7 @@
   .slider-row span{ font-family:'Space Mono',monospace; font-size:11px; width:38px; text-align:right; }
 
   /* ---------- client preview mode ---------- */
+  body:not(.client-preview) .tour-motion-controls { display:none !important; }
   body.client-preview { overflow: hidden; }
   body.client-preview .editor-only{ display:none !important; }
   body.client-preview header .tagline{ display:block; }
@@ -495,7 +496,7 @@
     box-shadow: var(--shadow);
   }
 </style>
-<link rel="stylesheet" href="branding.css"><link rel="stylesheet" href="theme.css?v=1"></head>
+<link rel="stylesheet" href="branding.css"><link rel="stylesheet" href="theme.css?v=1"><script src="site-features.js" defer></script></head>
 <body>
 
 <div class="wrap">
@@ -870,7 +871,7 @@
 
   /* ============ three.js viewer ============ */
   let renderer, scene3, camera, sphere, texture;
-  let animReq = null;
+  let tourControls = null;
   let textureLoadVersion = 0;
 
   function initThree(){
@@ -893,10 +894,16 @@
     window.addEventListener('pointerup', onPointerUp);
     els.canvas.addEventListener('wheel', onWheel, { passive:false });
 
-    animate();
+    tourControls = window.RayonTourControls({
+      renderer, camera, scene: scene3, canvas: els.canvas,
+      onManual(dir) { state.lon = THREE.MathUtils.radToDeg(Math.atan2(dir.z, dir.x)); state.lat = THREE.MathUtils.radToDeg(Math.asin(Math.max(-1, Math.min(1, dir.y)))); },
+      onNextRoom() { const index = state.scenes.findIndex(item => item.id === state.currentId); const next = state.scenes[(index + 1) % state.scenes.length]; if (next) activateScene(next.id); }
+    });
+    renderer.setAnimationLoop(animate);
   }
 
   function resizeRenderer(){
+    if (renderer.xr.isPresenting) return;
     const w = els.shell.clientWidth, h = els.shell.clientHeight;
     if(!w || !h) return;
     renderer.setSize(w, h, false);
@@ -905,7 +912,7 @@
   }
 
   function animate(){
-    animReq = requestAnimationFrame(animate);
+
     const phi = THREE.MathUtils.degToRad(90 - state.lat);
     const theta = THREE.MathUtils.degToRad(state.lon);
     const target = new THREE.Vector3(
@@ -913,9 +920,10 @@
       500 * Math.cos(phi),
       500 * Math.sin(phi) * Math.sin(theta)
     );
-    camera.lookAt(target);
+    if (!renderer.xr.isPresenting) camera.lookAt(target);
     camera.fov = state.fov;
     camera.updateProjectionMatrix();
+    if (tourControls) tourControls.update();
     renderer.render(scene3, camera);
     updateHotspotOverlay();
     updateMinimapCone();
@@ -1190,6 +1198,7 @@
   function activateScene(id){
     const nextScene = state.scenes.find(s=>s.id===id);
     if(!nextScene) return false;
+    if(tourControls) tourControls.reset();
     state.currentId = nextScene.id;
     state.lon = nextScene.initialLon !== undefined ? nextScene.initialLon : -90;
     state.lat = nextScene.initialLat !== undefined ? nextScene.initialLat : 0;
@@ -1738,6 +1747,7 @@
     setTimeout(resizeRenderer, 50); // Resize viewer logic when it goes fullscreen
   });
   document.getElementById('btnExitPreview').addEventListener('click', ()=>{
+    if (tourControls) tourControls.exit().catch(() => {});
     state.clientPreview = false;
     document.body.classList.remove('client-preview');
     document.getElementById('btnExitPreview').style.display = 'none';

@@ -36,7 +36,7 @@ const server=http.createServer((req,res)=>{const file=path.join(root,decodeURICo
     await frame.locator('#fileInput').setInputFiles({name:'new-room.jpg',mimeType:'image/jpeg',buffer:Buffer.from(panorama,'base64')});
     await page.waitForFunction(()=>document.querySelector('#tour-editor').contentDocument.querySelector('#sceneCount').textContent==='3 rooms');
     await frame.locator('input[type=file]').last().setInputFiles({name:'replacement.jpg',mimeType:'image/jpeg',buffer:Buffer.from(panorama,'base64')});
-    await page.waitForFunction(()=>document.querySelector('#tour-editor').contentDocument.querySelector('input[type=file]:last-child')?.value==='');
+    await page.waitForFunction(()=>Array.from(document.querySelector('#tour-editor').contentDocument.querySelectorAll('input[type=file]')).at(-1)?.value==='');
     await page.locator('#tour-preview').click();await page.frameLocator('#tour-preview-frame').locator('.sw').nth(1).waitFor();
     assert.equal(await page.frameLocator('#tour-preview-frame').locator('input[type=file]').count(),0);await page.locator('#tour-preview-close').click();
     await page.locator('#tour-new').click();await page.locator('#tour-title').fill('Client test');
