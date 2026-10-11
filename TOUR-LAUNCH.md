@@ -76,3 +76,14 @@ Hotspots use a smaller ring with a pulsing glow (disabled for reduced-motion pre
 
 
 Hotspots and their note popups remain available when the viewer controls hide. Following a room hotspot keeps controls hidden and gyro active. Room links use a 700 ms forward push and panorama crossfade, retaining the current view direction; reduced-motion and VR modes use a short fade without the push. The current room stays visible until the next image loads.
+
+
+## Tour gallery, deletion and availability
+
+The admin project gallery replaces the tour dropdown. Cards show a compressed preview of the first panorama, project name, room count and published availability. Existing projects get previews when the gallery loads; publishing saves a small preview in the catalog. Select Edit tour to open a project.
+
+Delete asks for confirmation, then removes the current viewer and its editable source (when present) together with its catalog entry in one Git commit. The published URL stops working after GitHub Pages deploys. Deleting the public sample also removes the destination of the public sample link. Git history, downloaded backups and browser drafts are retained; deletion is not a secure purge. Concurrent repository changes block deletion instead of overwriting them.
+
+Under Client link availability, choose No expiry, 1/7/30 days after publishing, or a custom local date and time. Publish applies the setting. Durations start at publication time, not the first client visit. Existing deadlines remain unchanged when editing a published project; choose a new duration/date and republish to extend access at the same URL. Drafts and downloaded backups retain the setting.
+
+Expired viewers show an expiry notice and contact link, including tabs left open and resumed tabs. This is a browser-enforced presentation limit based on the device clock, not secure authentication: HTML and source files remain hosted, the check can be bypassed, and downloaded copies cannot be revoked. A backend and private storage are required for enforceable timed access. Existing tours default to No expiry.

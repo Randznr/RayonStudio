@@ -62,6 +62,22 @@
     (function(){
       setTimeout(function(){ var intro=document.querySelector('.tour-intro'); if(intro) intro.remove(); }, 2300);
       var data = JSON.parse(document.getElementById('data').textContent);
+      var expired = false, expiryTimer;
+      function checkExpiry() {
+        if (expired || !data.expiresAt) return expired;
+        var remaining = Date.parse(data.expiresAt) - Date.now();
+        if (remaining > 0) { clearTimeout(expiryTimer); expiryTimer = setTimeout(checkExpiry, Math.min(remaining, 30000)); return false; }
+        expired = true;
+        if (renderer) renderer.setAnimationLoop(null);
+        if (controls) controls.exit().catch(function(){});
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+        document.body.classList.remove('tour-looking','glasses-mode');
+        document.body.innerHTML = '<main style="min-height:100vh;display:grid;place-content:center;text-align:center;padding:24px;box-sizing:border-box;color:#faf7f1;background:#1a1815;font:16px/1.6 system-ui,sans-serif"><h1>This tour has expired.</h1><p>Please contact Rayon Studio to extend your viewing access.</p><a href="../index.html#contact" style="color:#b9d8ce">Contact the studio</a></main>';
+        return true;
+      }
+      if (checkExpiry()) return;
+      document.addEventListener('visibilitychange', checkExpiry);
+      window.addEventListener('pageshow', checkExpiry);
       var scenes = data.scenes;
       if (!window.THREE) { document.getElementById('tour-help').textContent = 'The viewer could not load. Please refresh the page.'; return; }
       document.addEventListener('keydown', function(e) { if(e.key==='ArrowLeft') lon-=5; if(e.key==='ArrowRight') lon+=5; if(e.key==='ArrowUp') lat=Math.min(85,lat+5); if(e.key==='ArrowDown') lat=Math.max(-85,lat-5); });
@@ -158,6 +174,7 @@
         if (progress === 1) finishRoomTransition();
       }
       function loadScene(i, preserveView, travelDirection){
+        if (checkExpiry()) return;
         if (controls && !preserveView) controls.reset();
         var version=++loadVersion;
         if (!travelDirection) document.querySelectorAll('.hs,.pop').forEach(function(node){node.remove();});
@@ -173,7 +190,7 @@
         if (fadeEl) { fadeEl.style.opacity = '0'; fadeEl.style.backgroundImage = ''; }
         var loader = new THREE.TextureLoader();
         loader.load(src, function(tex){
-          if(version!==loadVersion){tex.dispose();return;}
+          if(expired || version!==loadVersion){tex.dispose();return;}
           finishRoomTransition();
           if (sphere.material.map && travelDirection) {
             var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches || renderer.xr.isPresenting || document.body.classList.contains('glasses-mode');
@@ -192,7 +209,7 @@
           sphere.material.needsUpdate = true;
           document.getElementById('tour-help').textContent='Drag to look around. Scroll to zoom. Tap the view to show controls.';
           if(fadeEl){ requestAnimationFrame(function(){ fadeEl.style.opacity = '0'; }); }
-        }, undefined, function(){if(version===loadVersion){document.getElementById('tour-help').textContent='This room could not load. Select another room or refresh to try again.';if(fadeEl)fadeEl.style.opacity='0';}});
+        }, undefined, function(){if(!expired && version===loadVersion){document.getElementById('tour-help').textContent='This room could not load. Select another room or refresh to try again.';if(fadeEl)fadeEl.style.opacity='0';}});
         if (!travelDirection) {
           document.getElementById('lbl').textContent = s.name;
           renderStrip(); renderMinimap(); updateVariantButton();
@@ -247,6 +264,7 @@
         var ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera);
       }
       function animate(){
+        if (expired) return;
         updateRoomTransition(performance.now());
 
         var phi = THREE.MathUtils.degToRad(90-lat), theta = THREE.MathUtils.degToRad(lon);

@@ -32,11 +32,100 @@
     if(!value || !Array.isArray(value.tours)) throw new Error('Invalid tour catalog.');
     const ids=new Set(); value.tours.forEach(tour=>{TourData.path(tour.id); if(ids.has(tour.id)||typeof tour.title!=='string') throw new Error('Invalid tour catalog.'); ids.add(tour.id);}); return value;
   }
+  const previews = new Map();
+  let galleryGeneration = 0;
+  const previewKey = tour => scope()+':'+tour.id+':'+(tour.revision||'legacy');
+  function expirySettings() { return {mode:$('#tour-expiry').value,date:$('#tour-expires-at').value}; }
+  let originalExpiry = null, originalExpiryInput = '';
+  function setExpiry(expiresAt, setting) {
+    $('#tour-expiry').value=setting?.mode || (expiresAt?'custom':'none');
+    if(setting) $('#tour-expires-at').value=setting.date||'';
+    else if(expiresAt) {const date=new Date(expiresAt);$('#tour-expires-at').value=new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+    else $('#tour-expires-at').value='';
+    originalExpiry=expiresAt||null;originalExpiryInput=$('#tour-expires-at').value;
+    updateExpirySummary();
+  }
+  function getExpiry(requireFuture=false) {
+    const mode=$('#tour-expiry').value;
+    if(mode==='none')return null;
+    const value=mode==='custom'?new Date(originalExpiry&&originalExpiryInput&&$('#tour-expires-at').value===originalExpiryInput?originalExpiry:$('#tour-expires-at').value):new Date(Date.now()+Number(mode)*86400000);
+    if(!Number.isFinite(value.getTime()))throw new Error('Choose a valid expiry date and time.');
+    if(requireFuture && value.getTime()<=Date.now())throw new Error('Choose a future expiry date, or select No expiry to reopen this tour.');
+    return value.toISOString();
+  }
+  function updateExpirySummary() {
+    $('#tour-expiry-custom').hidden=$('#tour-expiry').value!=='custom';
+    try {const expiry=getExpiry();$('#tour-expiry-summary').textContent=expiry?'Viewing ends '+new Date(expiry).toLocaleString()+'.':'The viewing link will remain available until you take it offline or delete it.';}
+    catch {$('#tour-expiry-summary').textContent='Choose the date and time when viewing should end.';}
+  }
+  $('#tour-expiry').onchange=()=>{updateExpirySummary();changed();};
+  $('#tour-expires-at').oninput=()=>{updateExpirySummary();changed();};
+  function currentPayload() {return {...editor().getData(),title:$('#tour-title').value.trim(),expiresAt:getExpiry()};}
+  async function thumbnail(image) {
+    if(!image)return null;
+    const img=new Image();img.src=image;await img.decode();
+    const canvas=document.createElement('canvas');canvas.width=400;canvas.height=225;
+    const scale=Math.max(canvas.width/img.width,canvas.height/img.height);
+    canvas.getContext('2d').drawImage(img,(canvas.width-img.width*scale)/2,(canvas.height-img.height*scale)/2,img.width*scale,img.height*scale);
+    return canvas.toDataURL('image/jpeg',0.72);
+  }
+  function safeThumbnail(value) {return typeof value==='string'&&value.length<150000&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value);}
   function renderList() {
-    const select=$('#tour-select');select.replaceChildren();
-    catalog.tours.forEach(tour=>{const option=document.createElement('option');option.value=tour.id;option.textContent=(tour.id==='sample'?'Public sample — ':tour.published===false?'Offline — ':'Client — ')+tour.title;select.append(option);});
-    if(active&&!catalog.tours.some(t=>t.id===active.id)){const draft=document.createElement('option');draft.value=active.id;draft.textContent='New draft — '+($('#tour-title').value||active.title);select.append(draft);}
-    if(active) select.value=active.id;
+    const generation=++galleryGeneration, gallery=$('#tour-gallery');gallery.replaceChildren();
+    const tours=[...catalog.tours];
+    if(active&&!tours.some(t=>t.id===active.id))tours.push({...active,title:$('#tour-title').value||active.title,draft:true});
+    if(!tours.length){const empty=document.createElement('p');empty.className='tour-gallery-empty';empty.textContent='No tours yet. Create your first client tour.';gallery.append(empty);}
+    const missing=[];
+    for(const tour of tours) {
+      const card=document.createElement('article');card.className='tour-card'+(active?.id===tour.id?' is-active':'');card.dataset.tourId=tour.id;
+      const preview=document.createElement('div');preview.className='tour-card-preview';preview.textContent='Preview loading...';
+      const showPreview=src=>{preview.replaceChildren();if(src){const img=document.createElement('img');img.src=src;img.alt='Preview of '+tour.title;preview.append(img);}else preview.textContent='Add a panorama to create a preview';};
+      const cached=previews.get(previewKey(tour)),src=safeThumbnail(tour.thumbnail)?tour.thumbnail:cached;
+      if(src)showPreview(src);else if(tour.draft)showPreview(null);else missing.push({tour,showPreview});
+      const body=document.createElement('div');body.className='tour-card-body';
+      const state=document.createElement('div');state.className='tour-card-state';
+      const expired=tour.expiresAt&&Date.parse(tour.expiresAt)<=Date.now();
+      state.textContent=tour.draft?'Unpublished draft':tour.published===false?'Offline':expired?'Expired':tour.id==='sample'?'Public sample':'Available';
+      const title=document.createElement('h3');title.textContent=tour.title;
+      const meta=document.createElement('p');meta.className='tour-card-meta';meta.textContent=(tour.rooms!=null?tour.rooms+' rooms | ':'')+(tour.expiresAt?'Expires '+new Date(tour.expiresAt).toLocaleString():'No expiry');
+      const actions=document.createElement('div');actions.className='tour-card-actions';
+      const edit=document.createElement('button');edit.type='button';edit.className='album-action';edit.dataset.action='edit';edit.textContent=active?.id===tour.id?'Editing':'Edit tour';edit.setAttribute('aria-label','Edit '+tour.title);edit.setAttribute('aria-pressed',String(active?.id===tour.id));actions.append(edit);
+      if(!tour.draft){const remove=document.createElement('button');remove.type='button';remove.className='album-action tour-delete';remove.dataset.action='delete';remove.textContent='Delete';remove.setAttribute('aria-label','Delete '+tour.title);actions.append(remove);}
+      actions.querySelectorAll('button').forEach(button=>button.disabled=busy||editorBusy);
+      body.append(state,title,meta,actions);card.append(preview,body);gallery.append(card);
+    }
+    // Older projects have no catalog thumbnail. Upgrade their preview lazily in memory.
+    (async()=>{for(const item of missing){if(generation!==galleryGeneration||!token)return;try{
+      const payload=TourData.parse(await read(item.tour.hasSource?TourData.sourcePath(item.tour.id):TourData.path(item.tour.id)));
+      const src=await thumbnail(payload.scenes[0]?.image);if(src)previews.set(previewKey(item.tour),src);
+      if(generation===galleryGeneration)item.showPreview(src);
+    }catch{if(generation===galleryGeneration)item.showPreview(null);}}})();
+  }
+  $('#tour-gallery').onclick=async event=>{
+    const button=event.target.closest('button[data-action]');if(!button||busy||editorBusy)return;
+    const id=button.closest('[data-tour-id]').dataset.tourId;
+    if(button.dataset.action==='delete'){await deleteTour(id);return;}
+    if(active?.id===id)return;
+    if(dirty&&!confirm('Discard unpublished changes to switch tours?'))return;
+    lock(true);try{await load(id);}catch(error){status(error.message);}finally{lock(false);}
+  };
+  async function deleteTour(id) {
+    const target=catalog.tours.find(t=>t.id===id);if(!target)return;
+    const warning='Delete "'+target.title+'"? This removes its published viewer and editable project from the current repository. Its link stops working after deployment. Download a backup first if you need it. Git history and existing downloads are retained.'+(id==='sample'?' The public sample link on your website will also stop working.':'')+(active?.id===id&&dirty?' Unpublished edits to this tour will also be discarded.':'');
+    if(!confirm(warning))return;
+    lock(true);try{
+      if((await api('/git/ref/heads/'+encodeURIComponent(branch))).object.sha!==head)throw new Error('The repository changed. Save a draft or backup and sign in again.');
+      const nextCatalog={...catalog,tours:catalog.tours.filter(t=>t.id!==id)};
+      const entries=[{path:TourData.path(id),mode:'100644',type:'blob',sha:null}];
+      if(target.hasSource)entries.push({path:TourData.sourcePath(id),mode:'100644',type:'blob',sha:null});
+      entries.push({path:'tours/catalog.json',mode:'100644',type:'blob',content:JSON.stringify(nextCatalog)});
+      const nextTree=await api('/git/trees','POST',{base_tree:tree,tree:entries});
+      const commit=await api('/git/commits','POST',{message:'Delete client virtual tour',tree:nextTree.sha,parents:[head]});
+      await api('/git/refs/heads/'+encodeURIComponent(branch),'PATCH',{sha:commit.sha,force:false});
+      head=commit.sha;tree=nextTree.sha;catalog=nextCatalog;
+      if(active?.id===id){active=null;dirty=false;await newTour();dirty=false;}
+      renderList();share();status('Tour deleted from GitHub. Its link stops working after deployment. Saved browser drafts and downloaded backups are retained.');
+    }catch(error){status(error.message);}finally{lock(false);}
   }
   function connectEditor() {
     return new Promise((resolve,reject)=>{
@@ -59,7 +148,7 @@
   async function load(id) {
     const next=catalog.tours.find(tour=>tour.id===id); if(!next) return;
     const payload=TourData.parse(await read(next.hasSource ? TourData.sourcePath(next.id) : TourData.path(next.id)));
-    await editor().load(payload);active=next;$('#tour-title').value=next.title;dirty=false;renderList();share();
+    await editor().load(payload);active=next;$('#tour-title').value=next.title;setExpiry(next.expiresAt||payload.expiresAt);previews.set(previewKey(next),await thumbnail(payload.scenes[0]?.image));dirty=false;renderList();share();
     status(next.id==='sample'?'Editing the public sample. Changes appear for everyone after publishing.':'Editing a client tour. Its viewing link remains unchanged when you publish.');
   }
   $('#tour-login').onsubmit=async event=>{
@@ -78,14 +167,10 @@
     } catch(error) {token='';$('#tour-workspace').hidden=true;$('#tour-login').hidden=false;$('#tour-editor').removeAttribute('src');status(error.message);}
     finally{lock(false);}
   };
-  $('#tour-select').onchange=async()=>{
-    const id=$('#tour-select').value;if(dirty&&!confirm('Discard unpublished changes to switch tours?')){renderList();return;}
-    lock(true);try{await load(id);}catch(error){renderList();status(error.message);}finally{lock(false);}
-  };
   async function newTour(){
     if(dirty&&!confirm('Discard unpublished changes and start a new client tour?'))return;
     active={id:crypto.randomUUID(),title:'Untitled client tour'};
-    await editor().load({scenes:[],floorplan:null,branding:null});$('#tour-title').value=active.title;renderList();share();changed();
+    await editor().load({scenes:[],floorplan:null,branding:null});$('#tour-title').value=active.title;setExpiry(null);renderList();share();changed();
   }
   $('#tour-new').onclick=newTour;
   $('#tour-update-token').onclick=async()=>{
@@ -112,8 +197,8 @@
   $('#tour-save-draft').onclick=async()=>{
     lock(true);try{
       if(!active)throw new Error('Choose or create a tour first.');
-      const saved={...active,title:$('#tour-title').value.trim()||'Untitled tour'};
-      await TourDrafts.save(scope(),saved,editor().getData());await refreshDrafts();
+      const saved={...active,title:$('#tour-title').value.trim()||'Untitled tour',expirySetting:expirySettings()};
+      await TourDrafts.save(scope(),saved,currentPayload());await refreshDrafts();
       $('#draft-status').textContent='Draft saved in this browser. You can restore it after signing in again. It is not published.';
     }catch(error){status(error.message);}finally{lock(false);}
   };
@@ -122,19 +207,19 @@
     if(dirty&&!confirm('Replace the current unsaved edits with this browser draft?'))return;
     lock(true);try{
       const saved=await TourDrafts.get($('#tour-drafts').value);if(!saved||saved.scope!==scope())throw new Error('Draft not found.');
-      await editor().load(saved.payload);active=catalog.tours.find(t=>t.id===saved.tour.id)||saved.tour;$('#tour-title').value=saved.tour.title;renderList();share();changed();
+      await editor().load(saved.payload);active=catalog.tours.find(t=>t.id===saved.tour.id)||saved.tour;$('#tour-title').value=saved.tour.title;setExpiry(saved.payload.expiresAt,saved.tour.expirySetting);renderList();share();changed();
     }catch(error){status(error.message);}finally{lock(false);}
   };
   $('#tour-import').onchange=async()=>{
     const file=$('#tour-import').files[0];if(!file)return;
     if(dirty&&!confirm('Replace this draft with the imported tour?')){$('#tour-import').value='';return;}
-    lock(true);try{if(file.size>40*1024*1024)throw new Error('Tour files must be under 40 MB.');const payload=TourData.parse(await file.text());await editor().load(payload);changed();}
+    lock(true);try{if(file.size>40*1024*1024)throw new Error('Tour files must be under 40 MB.');const payload=TourData.parse(await file.text());await editor().load(payload);setExpiry(payload.expiresAt);changed();}
     catch(error){status(error.message);}finally{$('#tour-import').value='';lock(false);}
   };
   function download(content,name,type) {const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  $('#tour-backup').onclick=()=>{try{download(JSON.stringify(editor().getData()),'rayon-tour-backup.json','application/json');}catch(error){status(error.message);}};
+  $('#tour-backup').onclick=()=>{try{download(JSON.stringify(currentPayload()),'rayon-tour-backup.json','application/json');}catch(error){status(error.message);}};
   $('#tour-preview').onclick=()=>{
-    try{const payload=editor().getData();if(!payload.scenes.length)throw new Error('Add a panorama first.');const html=TourFormat.build(payload);$('#tour-preview-frame').srcdoc=html.replace('<head>','<head><base href="'+new URL('tours/',location.href).href+'">');$('#tour-preview-dialog').showModal();}catch(error){status(error.message);}
+    try{const payload=currentPayload();if(!payload.scenes.length)throw new Error('Add a panorama first.');const html=TourFormat.build(payload);$('#tour-preview-frame').srcdoc=html.replace('<head>','<head><base href="'+new URL('tours/',location.href).href+'">');$('#tour-preview-dialog').showModal();}catch(error){status(error.message);}
   };
   $('#tour-preview-close').onclick=()=>$('#tour-preview-dialog').close();
   $('#tour-preview-dialog').addEventListener('close',()=>{$('#tour-preview-frame').srcdoc='';});
@@ -144,23 +229,24 @@
     try{
       const title=$('#tour-title').value.trim();if(!title)throw new Error('Enter a tour title.');
       const payload=editor().getData();if(!payload.scenes.length)throw new Error('Add at least one panorama before publishing.');
-      payload.title=title;payload.revision=crypto.randomUUID();
+      payload.title=title;payload.revision=crypto.randomUUID();payload.expiresAt=getExpiry(true);
+      const cover=await thumbnail(payload.scenes[0].image);
       const html=TourFormat.build(payload);if(encoder.encode(html).length>40*1024*1024)throw new Error('This tour exceeds 40 MB. Reduce the number or size of the panoramas.');
       if((await api('/git/ref/heads/'+encodeURIComponent(branch))).object.sha!==head)throw new Error('The repository changed since sign-in. Download your draft backup, sign in again, and import the backup before publishing.');
-      const next={id:active.id,title,revision:payload.revision,hasSource:true,published:true,updatedAt:new Date().toISOString(),rooms:payload.scenes.length};const nextCatalog={tours:catalog.tours.filter(tour=>tour.id!==next.id).concat(next)};
+      const next={id:active.id,title,revision:payload.revision,hasSource:true,published:true,updatedAt:new Date().toISOString(),rooms:payload.scenes.length,expiresAt:payload.expiresAt,thumbnail:cover};const nextCatalog={tours:catalog.tours.filter(tour=>tour.id!==next.id).concat(next)};
       const blob=await api('/git/blobs','POST',{content:html,encoding:'utf-8'});
       const source=await api('/git/blobs','POST',{content:JSON.stringify(payload),encoding:'utf-8'});
       const nextTree=await api('/git/trees','POST',{base_tree:tree,tree:[{path:TourData.path(next.id),mode:'100644',type:'blob',sha:blob.sha},{path:TourData.sourcePath(next.id),mode:'100644',type:'blob',sha:source.sha},{path:'tours/catalog.json',mode:'100644',type:'blob',content:JSON.stringify(nextCatalog)}]});
       const commit=await api('/git/commits','POST',{message:'Publish '+(next.id==='sample'?'sample':'client')+' virtual tour',tree:nextTree.sha,parents:[head]});
       await api('/git/refs/heads/'+encodeURIComponent(branch),'PATCH',{sha:commit.sha,force:false});
-      head=commit.sha;tree=nextTree.sha;catalog=nextCatalog;active=next;dirty=false;renderList();share();status('Tour published to GitHub. Use Check live link before sending the link or QR code.');
+      head=commit.sha;tree=nextTree.sha;catalog=nextCatalog;active=next;dirty=false;setExpiry(next.expiresAt);renderList();share();status('Tour published to GitHub. Use Check live link before sending the link or QR code.');
     }catch(error){status(error.message);}finally{lock(false);}
   };
   function share(){
     liveGeneration++;
     $('#tour-offline').hidden=!active||active.id==='sample'||!active.hasSource||active.published===false;
     $('#tour-share').hidden=!active||active.published===false||!catalog.tours.some(tour=>tour.id===active.id);if($('#tour-share').hidden)return;
-    $('#tour-live-status').textContent='Not checked yet. Check the live link before sending it to your client.';
+    $('#tour-live-status').textContent=active.expiresAt&&Date.parse(active.expiresAt)<=Date.now()?'This tour has expired. Choose a new availability period and publish to reopen it.':'Not checked yet. Check the live link before sending it to your client.';
     $('#tour-qr').replaceChildren();$('#tour-link').value='';$('#tour-open').removeAttribute('href');$('#tour-qr-download').removeAttribute('href');if(qrURL){URL.revokeObjectURL(qrURL);qrURL='';}
     try{
       const base=new URL($('#tour-site').value);if(base.protocol!=='https:')throw new Error();base.hash='';base.search='';if(!base.pathname.endsWith('/'))base.pathname+='/';
@@ -172,6 +258,7 @@
   $('#tour-site').oninput=share;
   $('#tour-check-live').onclick=async()=>{
     const generation=liveGeneration, url=$('#tour-link').value;if(!url)return;
+    if(active.expiresAt&&Date.parse(active.expiresAt)<=Date.now()){$('#tour-live-status').textContent='This tour has expired. Extend its availability and publish before sharing.';return;}
     $('#tour-check-live').disabled=true;$('#tour-live-status').textContent='Checking the deployed viewer…';
     try{
       const response=await fetch(url+'?verify='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});
@@ -197,6 +284,6 @@
     }catch(error){status(error.message);}finally{lock(false);}
   };
   $('#tour-copy').onclick=async()=>{try{if(!$('#tour-link').value)return;await navigator.clipboard.writeText($('#tour-link').value);status('Tour link copied.');}catch{status('Select the viewing link and copy it manually.');}};
-  $('#tour-logout').onclick=()=>{if(dirty&&!confirm('Discard unpublished changes and sign out?'))return;token='';dirty=false;active=null;catalog={tours:[]};$('#tour-editor').removeAttribute('src');$('#tour-workspace').hidden=true;$('#tour-login').hidden=false;if(qrURL)URL.revokeObjectURL(qrURL);status('Signed out.');};
+  $('#tour-logout').onclick=()=>{if(dirty&&!confirm('Discard unpublished changes and sign out?'))return;token='';galleryGeneration++;previews.clear();$('#tour-gallery').replaceChildren();dirty=false;active=null;catalog={tours:[]};$('#tour-editor').removeAttribute('src');$('#tour-workspace').hidden=true;$('#tour-login').hidden=false;if(qrURL)URL.revokeObjectURL(qrURL);status('Signed out.');};
   window.addEventListener('beforeunload',event=>{if(dirty||busy||editorBusy){event.preventDefault();event.returnValue='';}});
 })();

@@ -5,6 +5,7 @@
     if (!data || !Array.isArray(data.scenes) || data.scenes.length > 100) throw new Error('Choose a RAYON tour file with up to 100 rooms.');
     if(data.title != null && (typeof data.title!=='string'||data.title.length>120))throw new Error('Tour titles must be 120 characters or fewer.');
     if(data.revision != null && !/^[a-f0-9-]{36}$/.test(data.revision))throw new Error('Invalid publication revision.');
+    if(data.expiresAt != null && (typeof data.expiresAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(data.expiresAt) || !Number.isFinite(Date.parse(data.expiresAt))))throw new Error('Invalid tour expiry date.');
     const ids = new Set();
     for (const scene of data.scenes) {
       if (!scene || !/^[\w-]{1,100}$/.test(scene.id) || ids.has(scene.id) || typeof scene.name !== 'string' || !scene.image || !image(scene.image)) throw new Error('A room has invalid data or an unsupported image. Import a self-contained RAYON tour.');
