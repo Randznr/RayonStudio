@@ -156,13 +156,25 @@ const server = http.createServer((req, res) => {
     const fixture = TourData.parse(fs.readFileSync(path.join(root, 'tours/sample.html'), 'utf8'));
     fixture.scenes[0].alt = { image: fixture.scenes[1].image, active: false, labelA: 'Original', labelB: 'Alternate' };
     fixture.branding = { image:'data:image/png;base64,' + fs.readFileSync(path.join(root,'Images/RAYONSLOGO copy.png')).toString('base64'), opacity:1, scale:0.15, position:'top-left' };
+    fixture.floorplan = fixture.branding.image;
+    fixture.scenes.forEach(scene => { scene.mapX=0.5; scene.mapY=0.5; scene.mapHeading=25; });
     await automatic.route('**/tours/interaction-fixture.html', route => route.fulfill({contentType:'text/html',body:TourFormat.build(fixture)}));
     await automatic.goto(base + '/tours/interaction-fixture.html');
     await automatic.waitForFunction(() => window.testCamera && document.querySelector('#tour-help').textContent.startsWith('Drag'));
     const tiltedSensor = async (alpha,beta,gamma) => automatic.evaluate(values => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', values)), {alpha,beta,gamma});
     await tiltedSensor(0,65,20); await automatic.waitForTimeout(300);
+    const mapBeforeGyro = await automatic.locator('#mmCone2').evaluate(node => node.style.transform);
     await tiltedSensor(60,90,0); await automatic.waitForTimeout(600);
     const level = await automatic.evaluate(() => ({rightY:new THREE.Vector3(1,0,0).applyQuaternion(testCamera.quaternion).y, forwardY:testCamera.getWorldDirection(new THREE.Vector3()).y}));
+    const mapAfterGyro = await automatic.locator('#mmCone2').evaluate(node => node.style.transform);
+    assert.notEqual(mapAfterGyro,mapBeforeGyro,'Minimap heading must change with gyro');
+    const mapError = await automatic.evaluate(() => {
+      const direction=testCamera.getWorldDirection(new THREE.Vector3());
+      const expected=25+THREE.MathUtils.radToDeg(Math.atan2(direction.z,direction.x));
+      const actual=Number(document.querySelector('#mmCone2').style.transform.match(/rotate\(([-.0-9]+)deg\)/)[1]);
+      return Math.abs(actual-expected);
+    });
+    assert.ok(mapError<0.001,'Minimap must match the rendered heading plus floorplan alignment');
     assert.ok(Math.abs(level.rightY)<0.00001, 'Gyro must keep the horizon level after tilted calibration');
     assert.ok(Math.abs(level.forwardY)<0.01, 'An upright phone must return to level elevation');
     assert.equal(await automatic.locator('body.tour-looking').count(), 1);

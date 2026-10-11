@@ -109,6 +109,7 @@
         mmEl.appendChild(cone);
         updateCone();
       }
+      var mapDirection = new THREE.Vector3();
       function updateCone(){
         var cone = document.getElementById('mmCone2');
         if(!cone) return;
@@ -117,7 +118,10 @@
         cone.style.display = 'block';
         cone.style.left = (s.mapX*100)+'%'; cone.style.top = (s.mapY*100)+'%';
         
-        var angle = (s.mapHeading||0) + lon;
+        var viewCamera = renderer.xr.isPresenting ? renderer.xr.getCamera(camera) : camera;
+        viewCamera.getWorldDirection(mapDirection);
+        var heading = THREE.MathUtils.radToDeg(Math.atan2(mapDirection.z, mapDirection.x));
+        var angle = (s.mapHeading||0) + heading;
         cone.style.transform = 'translate(-50%,-100%) rotate('+angle+'deg)';
       }
       var renderer; try { renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true}); } catch(e) { document.getElementById("tour-help").textContent = "360 viewing requires WebGL. Try another browser or enable hardware acceleration."; return; }
