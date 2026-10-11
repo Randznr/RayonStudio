@@ -63,3 +63,8 @@ The controls are available in client preview, the public sample, and generated c
 The shared `site-features.js` adds the WhatsApp link for +267 74074086 and suppresses the context menu and image dragging. This discourages casual copying; it does not prevent downloading content, taking screenshots, or inspecting source.
 
 Preview each room, hotspot and alternate style, publish, run **Check live link**, and open the viewing URL on a phone or a signed-out browser. Scan the QR with a phone camera. Back up the editable project. The sample is an illustrative demo; replace it with approved portfolio panoramas when ready.
+
+
+## Updated viewer controls
+
+All sample and client viewers omit WhatsApp. A brief fullscreen logo intro fades away. Hotspots use a transparent glowing white ring. Motion starts automatically where browser permissions allow it; other phones require Enable motion. Pointer input, scrolling, and arrow keys switch to manual control. The VR.ic.png glasses icon starts immersive WebXR on supported headsets, or split-screen phone glasses mode otherwise. Select the icon again to exit.

@@ -1,6 +1,7 @@
-/* Motion controls and immersive WebXR for the public panorama viewer. */
+﻿/* Shared automatic motion, headset WebXR and phone glasses controls. */
 (function () {
   'use strict';
+  const assetBase = new URL('Images/', document.currentScript.src);
   window.RayonTourControls = function ({ renderer, camera, scene, canvas, onManual, onNextRoom }) {
     const panel = document.createElement('div');
     panel.className = 'tour-motion-controls';
@@ -14,12 +15,14 @@
       node.style.cssText = 'background:#191919e6;color:white;border:1px solid #ffffff70;border-radius:6px;padding:10px;min-height:44px;font:inherit;cursor:pointer';
       node.addEventListener('click', action); panel.appendChild(node); return node;
     }
-    let enabled = false, calibrated = false, timer, session = null;
+    let enabled = false, calibrated = false, timer, session = null, glasses = false, immersiveSupported = false, generation = 0;
     const orientation = new THREE.Quaternion(), offset = new THREE.Quaternion();
     const euler = new THREE.Euler(), zAxis = new THREE.Vector3(0, 0, 1);
     const correction = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
-    const screenRotation = new THREE.Quaternion();
+    const screenRotation = new THREE.Quaternion(), stereo = new THREE.StereoCamera();
+    stereo.eyeSep = 0; // A panorama has no depth; avoid artificial stereo parallax.
     function stopMotion() {
+      generation++;
       if (enabled && calibrated) onManual(camera.getWorldDirection(new THREE.Vector3()));
       enabled = false; calibrated = false; clearTimeout(timer);
       window.removeEventListener('deviceorientation', orient);
@@ -34,71 +37,111 @@
       if (!calibrated) {
         offset.copy(camera.quaternion).multiply(orientation.clone().invert());
         calibrated = true; clearTimeout(timer);
-        status.textContent = 'Move your phone to look around. Drag to return to manual control.';
+        status.textContent = 'Move your phone to look around. Drag to use manual control.';
       }
     }
-    const motion = button('Enable motion', async function () {
-      if (enabled) { stopMotion(); status.textContent = 'Drag or swipe to look around.'; return; }
-      if (!window.isSecureContext) { status.textContent = 'Open this tour over HTTPS to use motion controls.'; return; }
-      if (!window.DeviceOrientationEvent) { status.textContent = 'Motion sensors are unavailable. Drag or swipe to look around.'; return; }
+    async function startMotion(automatic) {
+      if (session || enabled) return;
+      if (!window.isSecureContext || !window.DeviceOrientationEvent) {
+        status.textContent = 'Drag or swipe to look around. Motion needs HTTPS and phone sensors.'; return;
+      }
+      const request = ++generation;
       motion.disabled = true;
       try {
-        if (typeof DeviceOrientationEvent.requestPermission === 'function' && await DeviceOrientationEvent.requestPermission() !== 'granted') {
-          status.textContent = 'Motion permission was declined. You can still drag or swipe.'; return;
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+          if (automatic) { status.textContent = 'Tap Enable motion to allow this phone’s motion sensors.'; return; }
+          if (await DeviceOrientationEvent.requestPermission() !== 'granted') {
+            status.textContent = 'Motion permission was declined. You can still drag or swipe.'; return;
+          }
         }
+        if (request !== generation) return;
         enabled = true; calibrated = false;
         motion.textContent = 'Disable motion'; motion.setAttribute('aria-pressed', 'true');
         status.textContent = 'Waiting for motion sensors…';
         window.addEventListener('deviceorientation', orient);
         timer = setTimeout(function () { stopMotion(); status.textContent = 'No motion data received. Check sensor permissions or drag to look around.'; }, 5000);
       } catch (_) { stopMotion(); status.textContent = 'Motion access failed. Drag or swipe to look around.'; }
-      finally { motion.disabled = false; }
+      finally { motion.disabled = !!session; }
+    }
+    const motion = button('Enable motion', function () {
+      if (enabled) { stopMotion(); status.textContent = 'Drag or swipe to look around.'; }
+      else startMotion(false);
     });
     motion.setAttribute('aria-pressed', 'false');
     renderer.xr.enabled = true;
     renderer.xr.setReferenceSpaceType('local');
-    const vr = button('Checking VR…', async function () {
+    function vrLabel(label) { vr.setAttribute('aria-label', label); vr.title = label; vr.setAttribute('aria-pressed', String(!!session || glasses)); }
+    function endGlasses() {
+      glasses = false; document.body.classList.remove('glasses-mode');
+      renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, innerHeight);
+      vrLabel('Enter VR'); window.dispatchEvent(new Event('resize'));
+      status.textContent = 'Glasses mode ended. Drag or swipe to look around.';
+    }
+    const vr = button('', async function () {
       vr.disabled = true;
       try {
         if (session) { await session.end(); return; }
+        if (glasses) { endGlasses(); if (document.fullscreenElement) await document.exitFullscreen(); return; }
+        if (!immersiveSupported) {
+          startMotion(false);
+          glasses = true; document.body.classList.add('glasses-mode'); vrLabel('Exit VR');
+          status.textContent = 'Turn your phone sideways and place it in your glasses.';
+          if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen().catch(function () {});
+          return;
+        }
         const next = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
         session = next;
         next.addEventListener('end', function () {
-          session = null; vr.textContent = 'Enter VR'; vr.disabled = false; motion.disabled = false;
+          session = null; vrLabel('Enter VR'); vr.disabled = false; motion.disabled = false;
           camera.position.set(0, 0, 0);
           status.textContent = 'VR ended. Drag or swipe to look around.';
         }, { once: true });
         stopMotion();
         await renderer.xr.setSession(next);
-        vr.textContent = 'Exit VR'; motion.disabled = true;
+        vrLabel('Exit VR'); motion.disabled = true;
         status.textContent = 'Use a controller trigger to visit the next room. Exit using your headset menu.';
       } catch (_) {
         if (session) { try { await session.end(); } catch (_) {} session = null; }
-        motion.disabled = false; vr.textContent = 'Enter VR';
+        motion.disabled = false; vrLabel('Enter VR');
         status.textContent = 'VR could not start. Connect your headset and allow VR access, then retry.';
       } finally { vr.disabled = false; }
     });
-    vr.disabled = true;
-    status.textContent = 'Drag or swipe to look around. Enable motion on a phone.';
+    vr.className = 'tour-vr-button';
+    const icon = document.createElement('img');
+    icon.src = new URL('VR.ic.png', assetBase).href; icon.alt = ''; icon.style.cssText = 'display:block;width:36px;height:36px;object-fit:contain';
+    vr.appendChild(icon); vrLabel('Enter VR'); vr.disabled = true;
     panel.appendChild(status); document.body.appendChild(panel);
     if (window.isSecureContext && navigator.xr) {
-      navigator.xr.isSessionSupported('immersive-vr').then(function (supported) {
-        vr.disabled = !supported; vr.textContent = supported ? 'Enter VR' : 'VR unavailable';
-        if (!supported) vr.title = 'Open this tour in a WebXR-compatible headset browser.';
-      }).catch(function () { vr.textContent = 'VR unavailable'; });
-    } else { vr.textContent = 'VR unavailable'; vr.title = 'VR needs HTTPS and a WebXR-compatible browser and headset.'; }
+      navigator.xr.isSessionSupported('immersive-vr').then(function (supported) { immersiveSupported = supported; }).catch(function () {}).finally(function () { vr.disabled = false; });
+    } else vr.disabled = false;
     for (let index = 0; index < 2; index++) {
       const controller = renderer.xr.getController(index);
       controller.addEventListener('select', onNextRoom); scene.add(controller);
     }
-    canvas.addEventListener('pointerdown', stopMotion, true);
-    document.addEventListener('keydown', function (event) { if (event.key.startsWith('Arrow')) stopMotion(); }, true);
-    document.addEventListener('visibilitychange', function () { if (document.hidden) stopMotion(); });
+    document.addEventListener('pointerdown', function (event) {
+      if (!panel.contains(event.target)) { stopMotion(); status.textContent = 'Drag or swipe to look around.'; }
+    }, true);
+    canvas.addEventListener('wheel', stopMotion, { capture: true, passive: true });
+    document.addEventListener('keydown', function (event) {
+      if (event.key.startsWith('Arrow')) stopMotion();
+      if (event.key === 'Escape' && glasses) endGlasses();
+    }, true);
+    document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && glasses) endGlasses(); });
     window.addEventListener('pagehide', stopMotion);
+    startMotion(true);
     return {
       update() { if (enabled && calibrated && !renderer.xr.isPresenting) camera.quaternion.copy(offset).multiply(orientation); },
-      reset: stopMotion,
-      async exit() { stopMotion(); if (session) await session.end(); }
+      render() {
+        if (!glasses) return false;
+        camera.updateMatrixWorld(); stereo.update(camera);
+        const width = innerWidth, height = innerHeight, half = Math.floor(width / 2);
+        renderer.setScissorTest(true);
+        renderer.setScissor(0, 0, half, height); renderer.setViewport(0, 0, half, height); renderer.render(scene, stereo.cameraL);
+        renderer.setScissor(half, 0, width - half, height); renderer.setViewport(half, 0, width - half, height); renderer.render(scene, stereo.cameraR);
+        renderer.setScissorTest(false); return true;
+      },
+      reset() { calibrated = false; },
+      async exit() { stopMotion(); if (glasses) endGlasses(); if (session) await session.end(); }
     };
   };
 })();

@@ -6,7 +6,7 @@
     if (event.target.closest('img, canvas')) event.preventDefault();
   });
   function mount() {
-    if (window.parent !== window || document.getElementById('whatsapp-chat')) return;
+    if (window.parent !== window || document.getElementById('whatsapp-chat') || document.querySelector('canvas#c, [data-tour-viewer]')) return;
     const link = document.createElement('a');
     link.id = 'whatsapp-chat';
     link.href = 'https://wa.me/26774074086';

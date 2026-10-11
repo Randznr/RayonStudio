@@ -9,8 +9,8 @@
     '<style>' +
     'html,body{margin:0;height:100%;background:#1a1815;font-family:Inter,sans-serif;overflow:hidden;}' +
     '#c{width:100%;height:100%;display:block;cursor:grab;touch-action:none;}' +
-    '.hs{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;border:2px solid #faf7f1;box-shadow:0 3px 10px rgba(0,0,0,.4);cursor:pointer;}' +
-    '.hs.note{background:#b08a4e;} .hs.link{background:#5f6e4f;}' +
+    '.hs{position:absolute;transform:translate(-50%,-50%);width:64px;height:44px;border:0;padding:0;background:transparent url(../Images/hotspot-ring.svg) center/contain no-repeat;cursor:pointer;filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #ffffff90);animation:hotspot-glow 2s ease-in-out infinite;}.hs:hover,.hs:focus-visible{filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 18px #fff);outline:2px solid #ffffff80;outline-offset:3px;border-radius:50%;}@keyframes hotspot-glow{50%{filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 16px #ffffffbb);}}@media(prefers-reduced-motion:reduce){.hs{animation:none;}}' +
+    '.glasses-mode .hs,.glasses-mode .strip-wrap,.glasses-mode .btn-show,.glasses-mode .lbl,.glasses-mode #tour-help,.glasses-mode .mm,.glasses-mode .brand,.glasses-mode .variant-switcher{display:none!important}.glasses-mode .tour-motion-controls{top:12px}.glasses-mode .tour-motion-controls> :not(.tour-vr-button){display:none}' +
     '.lbl{position:absolute;bottom:125px;left:16px;font-family:Fraunces,serif;font-style:italic;color:#faf7f1;background:rgba(34,31,26,.5);padding:7px 14px;border-radius:2px;font-size:16px;}' +
     '.strip-wrap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg, rgba(0,0,0,.8), transparent);padding:20px 10px 10px;transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:10;}' +
     '.strip-wrap.closed{transform:translateY(120%);}' +
@@ -46,7 +46,7 @@
     '.variant-track input::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,0.12);box-shadow:0 1px 4px rgba(0,0,0,0.24);}' +
     '.variant-current{margin-top:4px;font-size:9px;color:rgba(255,255,255,0.72);}' +
     '.fade-overlay{position:absolute;inset:0;pointer-events:none;background-size:cover;background-position:center center;opacity:0;transition:opacity .42s ease;}' +
-    '.tour-logo{position:absolute;top:18px;left:18px;width:80px;height:auto;z-index:25;pointer-events:none;background:transparent}.tour-logo img{display:block;width:100%;height:auto}#tour-help{top:auto!important;bottom:165px;margin:0}.variant-switcher{top:130px}.brand.tl{top:130px}.credit{display:none}@media(max-width:650px){.tour-logo{width:64px;top:14px;left:14px}.variant-switcher{top:110px}.brand.tl{top:110px}}</style></head><body><div class="tour-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="../Images/RAYONSLOGO%20copy2.png"><img src="../Images/RAYONSLOGO copy.png" alt="Rayon Studio"></picture></div>' +
+    '.tour-intro{position:fixed;inset:0;z-index:100;background:#f6f3ec;display:grid;place-items:center;pointer-events:none;animation:intro-out .55s ease 1.6s forwards}.tour-intro img{width:min(65vw,420px);max-height:65vh;object-fit:contain}@keyframes intro-out{to{opacity:0;visibility:hidden}}#tour-help{top:auto!important;bottom:165px;margin:0}.credit{display:none}@media(prefers-reduced-motion:reduce){.tour-intro{animation-duration:.01s}}</style></head><body data-tour-viewer><div class="tour-intro" aria-label="Rayon Studio"><img src="../Images/RAYONSLOGO copy.png" alt="Rayon Studio"></div>' +
     '<p id="tour-help" style="position:absolute;top:12px;left:14px;color:white;z-index:4;font:12px sans-serif;max-width:60%;pointer-events:none;background:rgba(20,25,21,.72);padding:8px 10px;border-radius:4px">Drag to look around. Scroll to zoom. Select a room below.</p><canvas id="c"></canvas><div id="fade" class="fade-overlay"></div><div class="variant-switcher" id="variantSwitcher" style="display:none;text-align:center;"><label id="variantHeader" style="display:block;font-size:10px;margin:0 0 4px;"></label><div class="variant-track"><input id="variantRange" type="range" min="0" max="1" step="1" value="0" style="width:42px; height:10px; appearance:none; -webkit-appearance:none; outline:none; margin:0; pointer-events:none; touch-action:none; border-radius:999px;"></div><div id="variantCurrent" class="variant-current" style="margin-top:4px;font-size:9px;">Original</div></div><div class="lbl" id="lbl"></div>' +
     '<div class="strip-wrap" id="stripWrap"><div class="strip-head"><span>Rooms in this tour</span><button class="btn-hide" id="btnHideRooms">✕ Hide</button></div><div class="strip" id="strip"></div></div><button class="btn-show" id="btnShowRooms">↑ Show rooms</button>' +
     '<div class="mm" id="mm"></div><img class="brand" id="brand">' +
@@ -59,6 +59,7 @@
   function viewerRuntimeJs(){
     return `
     (function(){
+      setTimeout(function(){ var intro=document.querySelector('.tour-intro'); if(intro) intro.remove(); }, 2300);
       var data = JSON.parse(document.getElementById('data').textContent);
       var scenes = data.scenes;
       if (!window.THREE) { document.getElementById('tour-help').textContent = 'The viewer could not load. Please refresh the page.'; return; }
@@ -212,7 +213,7 @@
         var phi = THREE.MathUtils.degToRad(90-lat), theta = THREE.MathUtils.degToRad(lon);
         var target = new THREE.Vector3(500*Math.sin(phi)*Math.cos(theta), 500*Math.cos(phi), 500*Math.sin(phi)*Math.sin(theta));
         if (!renderer.xr.isPresenting) { camera.lookAt(target); camera.fov = fov; camera.updateProjectionMatrix(); if (controls) controls.update(); }
-        renderer.render(scene3, camera);
+        if (!controls || !controls.render()) renderer.render(scene3, camera);
         updateHotspots();
         updateCone();
       }
@@ -247,11 +248,13 @@
           }
 
           if(!div){
-            div = document.createElement('div');
+            div = document.createElement('button');
+            div.type = 'button';
+            div.setAttribute('aria-label', hs.title || (hs.type === 'link' ? 'Go to room' : 'View note'));
             div.className = 'hs '+hs.type;
             div.dataset.id = hs.id;
             
-            div.addEventListener('pointerdown', function(ev){
+            div.addEventListener('click', function(ev){
               ev.stopPropagation();
               if(hs.type === 'link'){
                 var targetId = hs.targetSceneId || hs.targetScene || hs.sceneId || hs.title || hs.text;
