@@ -35,7 +35,7 @@ const server = http.createServer((req, res) => {
       await route.fulfill({ contentType: 'application/javascript', body: source + `
         const originalControls = window.RayonTourControls;
         window.RayonTourControls = function(options) {
-          window.testCamera = options.camera;
+          window.testCamera = options.camera; window.testScene = options.scene;
           options.renderer.xr.setSession = async function() {};
           return originalControls(options);
         };` });
@@ -91,7 +91,21 @@ const server = http.createServer((req, res) => {
     await page.getByRole('button', { name: 'Exit VR', exact: true }).click();
     await page.getByRole('button', { name: 'Enter VR', exact: true }).waitFor();
     await page.locator('.sw').nth(0).click();
-    await page.locator('.hs.link').first().click(); assert.match(await page.locator('#lbl').innerText(), /study/);
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator('.hs.link').first().isVisible(),true,'Hotspots remain visible with controls hidden');
+    await page.locator('.hs.link').first().click();
+    await page.waitForFunction(() => /study/.test(document.querySelector('#lbl').textContent));
+    await page.waitForFunction(() => testScene.children.some(node=>node.renderOrder===2));
+    assert.equal(await page.locator('body.tour-looking').count(),1);
+    await page.waitForTimeout(200);
+    const transition = await page.evaluate(() => {const mesh=testScene.children.find(node=>node.renderOrder===2);return {opacity:mesh.material.opacity,travel:mesh.position.length(),fov:testCamera.fov};});
+    assert.ok(transition.opacity>0 && transition.opacity<1);
+    assert.ok(transition.travel>0); assert.ok(transition.fov<78);
+    await page.waitForFunction(() => !testScene.children.some(node=>node.renderOrder===2));
+    assert.equal(await page.locator('.hs.link').first().isVisible(),true);
+    assert.equal(await page.locator('.tour-motion-controls').isVisible(),false);
+    assert.equal(await page.evaluate(() => testCamera.fov),78);
     await page.waitForFunction(() => document.querySelector('#tour-help').textContent.startsWith('Drag'));
     await page.screenshot({ path: path.join(root, 'tests/viewer-controls-mobile.png') });
     await page.setViewportSize({ width: 1365, height: 900 });
@@ -154,6 +168,13 @@ const server = http.createServer((req, res) => {
     assert.equal(await automatic.locator('body.tour-looking').count(), 1);
     await automatic.locator('.tour-motion-controls').waitFor({state:'hidden'});
     assert.equal(await automatic.locator('#brand').isVisible(), true);
+    const gyroHotspot = automatic.locator('.hs.link').first();
+    await gyroHotspot.dispatchEvent('pointerdown'); await gyroHotspot.dispatchEvent('pointerup'); await gyroHotspot.dispatchEvent('click');
+    await automatic.waitForFunction(() => /study/.test(document.querySelector('#lbl').textContent));
+    assert.equal(await automatic.locator('.tour-motion-controls button').first().getAttribute('aria-pressed'),'true','Hotspot navigation must keep gyro enabled');
+    assert.equal(await automatic.locator('body.tour-looking').count(),1);
+    await automatic.locator('.sw').first().dispatchEvent('click');
+    await automatic.waitForFunction(() => /lounge/.test(document.querySelector('#lbl').textContent) && document.querySelector('#tour-help').textContent.startsWith('Drag'));
     await automatic.locator('#c').click({position:{x:70,y:350}});
     await automatic.locator('.tour-motion-controls').waitFor({state:'visible'});
     await automatic.keyboard.press('ArrowRight'); await automatic.keyboard.press('ArrowUp');

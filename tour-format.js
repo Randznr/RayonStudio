@@ -10,7 +10,7 @@
     'html,body{margin:0;height:100%;background:#1a1815;font-family:Inter,sans-serif;overflow:hidden;}' +
     '#c{width:100%;height:100%;display:block;cursor:grab;touch-action:none;}' +
     '.hs{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border:0;padding:0;background:transparent url(../Images/hotspot-ring.svg) center/40px 25px no-repeat;cursor:pointer;filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #ffffff90);animation:hotspot-glow 1.8s ease-in-out infinite;}.hs:hover,.hs:focus-visible{filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 18px #fff);outline:2px solid #ffffff80;outline-offset:3px;border-radius:50%;}@keyframes hotspot-glow{0%,100%{filter:drop-shadow(0 0 1px #ffffff70) drop-shadow(0 0 2px #ffffff30);opacity:.7}50%{filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 14px #ffffffdd);opacity:1}}@media(prefers-reduced-motion:reduce){.hs{animation:none;}}' +
-    '.tour-motion-controls,.strip-wrap,.btn-show,.lbl,#tour-help,.mm,.variant-switcher,.hs,.pop{transition:opacity .25s ease,visibility .25s ease}.tour-looking .tour-motion-controls,.tour-looking .strip-wrap,.tour-looking .btn-show,.tour-looking .lbl,.tour-looking #tour-help,.tour-looking .mm,.tour-looking .variant-switcher,.tour-looking .hs,.tour-looking .pop{opacity:0!important;visibility:hidden!important;pointer-events:none!important}' +
+    '.tour-motion-controls,.strip-wrap,.btn-show,.lbl,#tour-help,.mm,.variant-switcher,.hs,.pop{transition:opacity .25s ease,visibility .25s ease}.tour-looking .tour-motion-controls,.tour-looking .strip-wrap,.tour-looking .btn-show,.tour-looking .lbl,.tour-looking #tour-help,.tour-looking .mm,.tour-looking .variant-switcher{opacity:0!important;visibility:hidden!important;pointer-events:none!important}' +
     '.glasses-mode .hs,.glasses-mode .strip-wrap,.glasses-mode .btn-show,.glasses-mode .lbl,.glasses-mode #tour-help,.glasses-mode .mm,.glasses-mode .variant-switcher{display:none!important}.glasses-mode .tour-motion-controls{top:12px!important}.glasses-mode .tour-motion-controls> :not(.tour-vr-button){display:none}' +
     '.lbl{position:absolute;bottom:125px;left:16px;font-family:Fraunces,serif;font-style:italic;color:#faf7f1;background:rgba(34,31,26,.5);padding:7px 14px;border-radius:2px;font-size:16px;}' +
     '.strip-wrap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg, rgba(0,0,0,.8), transparent);padding:20px 10px 10px;transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:10;}' +
@@ -134,13 +134,31 @@
         onManual: function(dir) { lon = THREE.MathUtils.radToDeg(Math.atan2(dir.z, dir.x)); lat = THREE.MathUtils.radToDeg(Math.asin(Math.max(-1, Math.min(1, dir.y)))); },
         onNextRoom: function() { loadScene((cur + 1) % scenes.length); }
       }) : null;
-      var loadVersion = 0;
-      function loadScene(i, preserveView){
+      var loadVersion = 0, roomTransition = null, transitionZoom = 0;
+      function finishRoomTransition() {
+        if (!roomTransition) return;
+        scene3.remove(roomTransition.mesh);
+        roomTransition.mesh.material.map.dispose();
+        roomTransition.mesh.material.dispose();
+        roomTransition = null; transitionZoom = 0;
+      }
+      function updateRoomTransition(now) {
+        if (!roomTransition) return;
+        var progress = Math.min(1, (now - roomTransition.start) / roomTransition.duration);
+        var eased = progress * progress * (3 - 2 * progress);
+        roomTransition.mesh.material.opacity = 1 - eased;
+        if (roomTransition.move) {
+          roomTransition.mesh.position.copy(roomTransition.direction).multiplyScalar(-45 * eased);
+          transitionZoom = 7 * Math.sin(Math.PI * progress);
+        }
+        if (progress === 1) finishRoomTransition();
+      }
+      function loadScene(i, preserveView, travelDirection){
         if (controls && !preserveView) controls.reset();
         var version=++loadVersion;
-        document.querySelectorAll('.hs,.pop').forEach(function(node){node.remove();});
+        if (!travelDirection) document.querySelectorAll('.hs,.pop').forEach(function(node){node.remove();});
         document.getElementById('tour-help').textContent='Loading room…';
-        cur = i; 
+        if (!travelDirection) cur = i;
         var s = scenes[i];
         if (!preserveView) {
           lon = s.initialLon !== undefined ? s.initialLon : -90;
@@ -148,27 +166,33 @@
           fov = 78;
         }
         var src = (s.alt && s.alt.active && s.alt.image) ? s.alt.image : s.image;
-        if(fadeEl && !preserveView){
-          var oldSrc = sphere.material.map && sphere.material.map.image ? sphere.material.map.image.currentSrc || sphere.material.map.image.src : '';
-          if(oldSrc) fadeEl.style.backgroundImage = 'url(' + oldSrc + ')';
-          else fadeEl.style.backgroundImage = '';
-          fadeEl.style.opacity = '1';
-        }
-        if (fadeEl && preserveView) fadeEl.style.opacity = '0';
+        if (fadeEl) { fadeEl.style.opacity = '0'; fadeEl.style.backgroundImage = ''; }
         var loader = new THREE.TextureLoader();
         loader.load(src, function(tex){
           if(version!==loadVersion){tex.dispose();return;}
-          if(sphere.material.map) sphere.material.map.dispose();
+          finishRoomTransition();
+          if (sphere.material.map && travelDirection) {
+            var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches || renderer.xr.isPresenting || document.body.classList.contains('glasses-mode');
+            var outgoing = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map:sphere.material.map, transparent:true, opacity:1, depthWrite:false, depthTest:false }));
+            outgoing.renderOrder = 2; scene3.add(outgoing);
+            roomTransition = {mesh:outgoing, start:performance.now(), duration:reduced ? 150 : 700, move:!reduced, direction:new THREE.Vector3(travelDirection.x,travelDirection.y,travelDirection.z).normalize()};
+          } else if (sphere.material.map) sphere.material.map.dispose();
+          if (travelDirection) {
+            cur = i;
+            document.querySelectorAll('.hs,.pop').forEach(function(node){node.remove();});
+            document.getElementById('lbl').textContent = s.name;
+            renderStrip(); renderMinimap(); updateVariantButton();
+          }
           sphere.material.map = tex;
           sphere.material.color.set(0xffffff);
           sphere.material.needsUpdate = true;
           document.getElementById('tour-help').textContent='Drag to look around. Scroll to zoom. Tap the view to show controls.';
           if(fadeEl){ requestAnimationFrame(function(){ fadeEl.style.opacity = '0'; }); }
         }, undefined, function(){if(version===loadVersion){document.getElementById('tour-help').textContent='This room could not load. Select another room or refresh to try again.';if(fadeEl)fadeEl.style.opacity='0';}});
-        document.getElementById('lbl').textContent = s.name;
-        renderStrip();
-        renderMinimap();
-        updateVariantButton();
+        if (!travelDirection) {
+          document.getElementById('lbl').textContent = s.name;
+          renderStrip(); renderMinimap(); updateVariantButton();
+        }
       }
       function renderStrip(){
         var strip = document.getElementById('strip'); strip.innerHTML='';
@@ -219,10 +243,11 @@
         var ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera);
       }
       function animate(){
+        updateRoomTransition(performance.now());
 
         var phi = THREE.MathUtils.degToRad(90-lat), theta = THREE.MathUtils.degToRad(lon);
         var target = new THREE.Vector3(500*Math.sin(phi)*Math.cos(theta), 500*Math.cos(phi), 500*Math.sin(phi)*Math.sin(theta));
-        if (!renderer.xr.isPresenting) { camera.lookAt(target); camera.fov = fov; camera.updateProjectionMatrix(); if (controls) controls.update(); }
+        if (!renderer.xr.isPresenting) { camera.lookAt(target); camera.fov = fov - transitionZoom; camera.updateProjectionMatrix(); if (controls) controls.update(); }
         if (!controls || !controls.render()) renderer.render(scene3, camera);
         updateHotspots();
         updateCone();
@@ -276,7 +301,7 @@
                     return name === needle || name.indexOf(needle) !== -1;
                   });
                 }
-                if(idx >= 0) loadScene(idx);
+                if(idx >= 0) { document.body.classList.add('tour-looking'); loadScene(idx, true, hs); }
               } else {
                 document.querySelectorAll('.pop').forEach(function(p){p.remove();});
                 var pop = document.createElement('div');

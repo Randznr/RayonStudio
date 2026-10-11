@@ -72,4 +72,7 @@ All sample and client viewers omit WhatsApp. A brief fullscreen logo intro fades
 
 ### Viewer refinements
 
-Hotspots use a smaller ring with a pulsing glow (disabled for reduced-motion preferences). Phone motion uses smoothed heading and gravity-based elevation to keep the horizon level. Switching alternative panoramas preserves the current direction and zoom. Dragging, scrolling, arrow keys, and gyro movement hide viewer controls and hotspots; tap the panorama or press Tab/Escape to reveal controls. A custom tour logo remains visible. Site WhatsApp links use Images/wa.me.png; viewers continue to omit WhatsApp.
+Hotspots use a smaller ring with a pulsing glow (disabled for reduced-motion preferences). Phone motion uses smoothed heading and gravity-based elevation to keep the horizon level. Switching alternative panoramas preserves the current direction and zoom. Dragging, scrolling, arrow keys, and gyro movement hide viewer controls; tap the panorama or press Tab/Escape to reveal controls. A custom tour logo remains visible. Site WhatsApp links use Images/wa.me.png; viewers continue to omit WhatsApp.
+
+
+Hotspots and their note popups remain available when the viewer controls hide. Following a room hotspot keeps controls hidden and gyro active. Room links use a 700 ms forward push and panorama crossfade, retaining the current view direction; reduced-motion and VR modes use a short fade without the push. The current room stays visible until the next image loads.

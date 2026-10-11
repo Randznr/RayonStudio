@@ -141,7 +141,7 @@
       controller.addEventListener('select', onNextRoom); scene.add(controller);
     }
     document.addEventListener('pointerdown', function (event) {
-      if (!panel.contains(event.target)) { stopMotion(); status.textContent = 'Drag or swipe to look around.'; }
+      if (!panel.contains(event.target) && !event.target.closest('.hs,.pop')) { stopMotion(); status.textContent = 'Drag or swipe to look around.'; }
     }, true);
     canvas.addEventListener('pointerdown', function (event) {
       pointerStart = { x: event.clientX, y: event.clientY }; pointerDragged = false;
