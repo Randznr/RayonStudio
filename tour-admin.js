@@ -78,7 +78,7 @@
     const missing=[];
     for(const tour of tours) {
       const card=document.createElement('article');card.className='tour-card'+(active?.id===tour.id?' is-active':'');card.dataset.tourId=tour.id;
-      const preview=document.createElement('div');preview.className='tour-card-preview';preview.textContent='Preview loading...';
+      const preview=document.createElement('button');preview.type='button';preview.dataset.action='open';preview.className='tour-card-preview';preview.setAttribute('aria-label','Open '+tour.title);preview.disabled=busy||editorBusy;preview.textContent='Preview loading...';
       const showPreview=src=>{preview.replaceChildren();if(src){const img=document.createElement('img');img.src=src;img.alt='Preview of '+tour.title;preview.append(img);}else preview.textContent='Add a panorama to create a preview';};
       const cached=previews.get(previewKey(tour)),src=safeThumbnail(tour.thumbnail)?tour.thumbnail:cached;
       if(src)showPreview(src);else if(tour.draft)showPreview(null);else missing.push({tour,showPreview});
@@ -101,13 +101,18 @@
       if(generation===galleryGeneration)item.showPreview(src);
     }catch{if(generation===galleryGeneration)item.showPreview(null);}}})();
   }
+  function showTourEditor() {
+    const heading=$('#tour-edit-heading');heading.textContent='Edit: '+($('#tour-title').value||'Untitled tour');
+    heading.focus({preventScroll:true});heading.scrollIntoView({block:'start',behavior:'smooth'});
+  }
+  $('#tour-back-gallery').onclick=()=>{const heading=$('#tour-library-heading');heading.focus({preventScroll:true});heading.scrollIntoView({block:'start',behavior:'smooth'});};
   $('#tour-gallery').onclick=async event=>{
-    const button=event.target.closest('button[data-action]');if(!button||busy||editorBusy)return;
-    const id=button.closest('[data-tour-id]').dataset.tourId;
-    if(button.dataset.action==='delete'){await deleteTour(id);return;}
-    if(active?.id===id)return;
+    const card=event.target.closest('[data-tour-id]');if(!card||busy||editorBusy)return;
+    const button=event.target.closest('button[data-action]'),id=card.dataset.tourId;
+    if(button?.dataset.action==='delete'){await deleteTour(id);return;}
+    if(active?.id===id){showTourEditor();return;}
     if(dirty&&!confirm('Discard unpublished changes to switch tours?'))return;
-    lock(true);try{await load(id);}catch(error){status(error.message);}finally{lock(false);}
+    lock(true);try{await load(id);showTourEditor();}catch(error){status(error.message);}finally{lock(false);}
   };
   async function deleteTour(id) {
     const target=catalog.tours.find(t=>t.id===id);if(!target)return;

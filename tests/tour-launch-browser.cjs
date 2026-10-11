@@ -65,8 +65,10 @@ const server=http.createServer((req,res)=>{try{const file=path.join(root,decodeU
   assert.equal(await page.locator('#tour-qr svg').count(),1);
   await page.locator('#tour-offline').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Tour taken offline'));
   assert(files.get('tours/client-'+id+'.html').includes('This tour is unavailable'));assert(!files.get('tours/client-'+id+'.html').includes('data:image'));assert(files.has('tours/data/'+id+'.json'));
-  await page.locator('#tour-logout').click();await login();await page.locator('[data-tour-id="'+id+'"] [data-action=edit]').click();await page.waitForFunction(()=>document.querySelector('#tour-title').value==='Launch test client');
+  await page.locator('#tour-logout').click();await login();await page.locator('[data-tour-id="'+id+'"] [data-action=open]').click();await page.waitForFunction(()=>document.querySelector('#tour-title').value==='Launch test client');
   await page.locator('#tour-publish').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('Tour published to GitHub'));assert.equal(await page.locator('#tour-link').inputValue(),url);
+  assert.equal(await page.locator('#tour-edit-heading').textContent(),'Edit: Launch test client');
+  await page.locator('#tour-back-gallery').click();assert.equal(await page.locator('#tour-library-heading').evaluate(node=>node===document.activeElement),true);
   assert.equal(JSON.parse(files.get('tours/data/'+id+'.json')).expiresAt,published.expiresAt,'Editing must preserve the exact existing deadline');
   await page.locator('#tour-expiry').selectOption('custom');await page.locator('#tour-expires-at').fill('2020-01-01T12:00');
   const beforeInvalid=writes;await page.locator('#tour-publish').click();await page.waitForFunction(()=>document.querySelector('#tour-status').textContent.includes('future expiry'));assert.equal(writes,beforeInvalid);
