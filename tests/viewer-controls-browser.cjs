@@ -43,6 +43,8 @@ const server = http.createServer((req, res) => {
     const base = 'http://127.0.0.1:' + server.address().port;
     await page.goto(base + '/index.html');
     assert.equal(await page.locator('#whatsapp-chat').getAttribute('href'), 'https://wa.me/26774074086');
+    assert.match(await page.locator('#whatsapp-chat img').getAttribute('src'), /Images\/wa.me.png$/);
+    assert.equal(await page.locator('#whatsapp-chat').textContent(), '');
     assert.equal(await page.evaluate(() => !document.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))), true);
     await page.goto(base + '/tours/sample.html');
     await page.waitForFunction(() => window.testCamera && document.querySelector('#tour-help').textContent.startsWith('Drag'));
@@ -60,6 +62,9 @@ const server = http.createServer((req, res) => {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 140, y: 380 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await page.waitForTimeout(100); assert.notDeepEqual(await q(), beforeTouch);
+    assert.equal(await page.locator('body.tour-looking').count(), 1);
+    await page.locator('#c').click({position:{x:70,y:350}});
+    assert.equal(await page.locator('body.tour-looking').count(), 0);
     await page.evaluate(() => window.denyMotion = true);
     await page.getByRole('button', { name: 'Enable motion', exact: true }).click();
     await page.getByRole('status').filter({ hasText: 'declined' }).waitFor();
@@ -69,6 +74,7 @@ const server = http.createServer((req, res) => {
     await page.waitForTimeout(100); const beforeMotion = await q();
     await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 45, beta: 70, gamma: 5 })));
     await page.waitForTimeout(100); assert.notDeepEqual(await q(), beforeMotion);
+    await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Disable motion', exact: true }).click();
     await page.waitForTimeout(100); const stopped = await q();
     await page.waitForTimeout(100); assert.deepEqual(await q(), stopped);
@@ -98,6 +104,7 @@ const server = http.createServer((req, res) => {
     await fallback.getByRole('button', { name: 'Disable motion', exact: true }).waitFor();
     await fallback.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 90, gamma: 0 })));
     await fallback.locator('#c').dispatchEvent('wheel', { deltaY: 10 });
+    await fallback.keyboard.press('Escape');
     await fallback.getByRole('button', { name: 'Enable motion', exact: true }).waitFor();
     await fallback.getByRole('button', { name: 'Enter VR', exact: true }).click();
     await fallback.locator('body.glasses-mode').waitFor();
@@ -123,12 +130,46 @@ const server = http.createServer((req, res) => {
     await sensor(40); await automatic.waitForTimeout(50);
     assert.notDeepEqual(await automatic.evaluate(() => window.testCamera.quaternion.toArray()), beforeAuto);
     await automatic.locator('#c').dispatchEvent('pointerdown', { clientX: 200, clientY: 300 });
+    await automatic.locator('#c').dispatchEvent('pointerup', { clientX: 200, clientY: 300 });
     await automatic.getByRole('button', { name: 'Enable motion', exact: true }).waitFor();
     for (const name of fs.readdirSync(path.join(root, 'tours')).filter(n => /^client-.*\.html$/.test(n))) {
       await automatic.goto(base + '/tours/' + name);
       assert.equal(await automatic.locator('#whatsapp-chat').count(), 0);
       await automatic.locator('.tour-vr-button img').waitFor();
     }
+    // A real generated viewer with an alternate panorama and custom logo.
+    global.window = global; require('../tour-data.js'); require('../tour-format.js');
+    const fixture = TourData.parse(fs.readFileSync(path.join(root, 'tours/sample.html'), 'utf8'));
+    fixture.scenes[0].alt = { image: fixture.scenes[1].image, active: false, labelA: 'Original', labelB: 'Alternate' };
+    fixture.branding = { image:'data:image/png;base64,' + fs.readFileSync(path.join(root,'Images/RAYONSLOGO copy.png')).toString('base64'), opacity:1, scale:0.15, position:'top-left' };
+    await automatic.route('**/tours/interaction-fixture.html', route => route.fulfill({contentType:'text/html',body:TourFormat.build(fixture)}));
+    await automatic.goto(base + '/tours/interaction-fixture.html');
+    await automatic.waitForFunction(() => window.testCamera && document.querySelector('#tour-help').textContent.startsWith('Drag'));
+    const tiltedSensor = async (alpha,beta,gamma) => automatic.evaluate(values => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', values)), {alpha,beta,gamma});
+    await tiltedSensor(0,65,20); await automatic.waitForTimeout(300);
+    await tiltedSensor(60,90,0); await automatic.waitForTimeout(600);
+    const level = await automatic.evaluate(() => ({rightY:new THREE.Vector3(1,0,0).applyQuaternion(testCamera.quaternion).y, forwardY:testCamera.getWorldDirection(new THREE.Vector3()).y}));
+    assert.ok(Math.abs(level.rightY)<0.00001, 'Gyro must keep the horizon level after tilted calibration');
+    assert.ok(Math.abs(level.forwardY)<0.01, 'An upright phone must return to level elevation');
+    assert.equal(await automatic.locator('body.tour-looking').count(), 1);
+    await automatic.locator('.tour-motion-controls').waitFor({state:'hidden'});
+    assert.equal(await automatic.locator('#brand').isVisible(), true);
+    await automatic.locator('#c').click({position:{x:70,y:350}});
+    await automatic.locator('.tour-motion-controls').waitFor({state:'visible'});
+    await automatic.keyboard.press('ArrowRight'); await automatic.keyboard.press('ArrowUp');
+    await automatic.locator('#c').dispatchEvent('wheel',{deltaY:-200});
+    await automatic.keyboard.press('Escape'); await automatic.waitForTimeout(100);
+    const savedView = await automatic.evaluate(() => ({q:testCamera.quaternion.toArray(),fov:testCamera.fov}));
+    await automatic.locator('.variant-track').click();
+    await automatic.waitForFunction(() => document.querySelector('#variantCurrent').textContent === 'Alternate' && document.querySelector('#tour-help').textContent.startsWith('Drag'));
+    await automatic.waitForTimeout(100);
+    assert.deepEqual(await automatic.evaluate(() => ({q:testCamera.quaternion.toArray(),fov:testCamera.fov})), savedView, 'Alternate view must preserve direction and zoom');
+    const pulse = await automatic.locator('.hs').first().evaluate(node => {const animation=node.getAnimations()[0];return {width:node.offsetWidth,name:getComputedStyle(node).animationName,frames:animation.effect.getKeyframes().map(f=>f.filter)};});
+    assert.equal(pulse.width,44); assert.equal(pulse.name,'hotspot-glow'); assert.ok(new Set(pulse.frames).size>1);
+    await automatic.locator('.tour-intro').waitFor({state:'detached'});
+    await automatic.screenshot({path:path.join(root,'tests/viewer-refined.png')});
+    await automatic.keyboard.press('ArrowLeft'); await automatic.waitForTimeout(300);
+    await automatic.screenshot({path:path.join(root,'tests/viewer-hidden.png')});
     await automatic.close();
     assert.deepEqual(errors, []);
     console.log('PASS: site-only WhatsApp, disappearing intro, glowing hotspot navigation, mouse/touch, automatic motion and manual handoff, sensor permissions, mocked WebXR, phone glasses fallback, client viewers; no browser errors.');

@@ -16,7 +16,16 @@
       node.addEventListener('click', action); panel.appendChild(node); return node;
     }
     let enabled = false, calibrated = false, timer, session = null, glasses = false, immersiveSupported = false, generation = 0;
-    const orientation = new THREE.Quaternion(), offset = new THREE.Quaternion();
+    const orientation = new THREE.Quaternion();
+    const sensorDirection = new THREE.Vector3(), viewDirection = new THREE.Vector3();
+    let yawOffset = 0, pitchOffset = 0, targetYaw = 0, targetPitch = 0, smoothYaw = 0, smoothPitch = 0, lastFrame = 0;
+    let revealUntil = 0, pointerStart = null, pointerDragged = false;
+    function showControls() { document.body.classList.remove('tour-looking'); revealUntil = performance.now() + 2500; }
+    function hideControls() {
+      document.body.classList.add('tour-looking');
+      if (document.activeElement?.closest('.tour-motion-controls,.strip-wrap,.variant-switcher,.hs')) document.activeElement.blur();
+    }
+    function angleDelta(a, b) { return Math.atan2(Math.sin(a - b), Math.cos(a - b)); }
     const euler = new THREE.Euler(), zAxis = new THREE.Vector3(0, 0, 1);
     const correction = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
     const screenRotation = new THREE.Quaternion(), stereo = new THREE.StereoCamera();
@@ -34,11 +43,24 @@
       euler.set(rad(event.beta), rad(event.alpha), -rad(event.gamma), 'YXZ');
       orientation.setFromEuler(euler).multiply(correction);
       orientation.multiply(screenRotation.setFromAxisAngle(zAxis, -rad(window.screen.orientation?.angle || window.orientation || 0)));
+      // Use heading and elevation only. Full quaternion offsets mix roll into
+      // yaw/pitch when the phone is calibrated at a tilt, leaving a slanted horizon.
+      sensorDirection.set(0, 0, -1).applyQuaternion(orientation);
+      const sensorYaw = Math.atan2(sensorDirection.x, -sensorDirection.z);
+      const sensorPitch = Math.asin(THREE.MathUtils.clamp(sensorDirection.y, -1, 1));
       if (!calibrated) {
-        offset.copy(camera.quaternion).multiply(orientation.clone().invert());
+        camera.getWorldDirection(viewDirection);
+        smoothYaw = Math.atan2(viewDirection.x, -viewDirection.z);
+        smoothPitch = Math.asin(THREE.MathUtils.clamp(viewDirection.y, -1, 1));
+        yawOffset = smoothYaw - sensorYaw; pitchOffset = 0; // Gravity defines level; never bake the starting tilt into elevation.
+        targetYaw = smoothYaw; targetPitch = smoothPitch; lastFrame = performance.now();
         calibrated = true; clearTimeout(timer);
-        status.textContent = 'Move your phone to look around. Drag to use manual control.';
+        status.textContent = 'Move your phone to look around. Tap the view to show controls.';
       }
+      const nextYaw = sensorYaw + yawOffset;
+      const nextPitch = THREE.MathUtils.clamp(sensorPitch + pitchOffset, -Math.PI * 0.47, Math.PI * 0.47);
+      if (performance.now() > revealUntil && (Math.abs(angleDelta(nextYaw, targetYaw)) > 0.004 || Math.abs(nextPitch - targetPitch) > 0.004)) hideControls();
+      targetYaw = nextYaw; targetPitch = nextPitch;
     }
     async function startMotion(automatic) {
       if (session || enabled) return;
@@ -121,16 +143,40 @@
     document.addEventListener('pointerdown', function (event) {
       if (!panel.contains(event.target)) { stopMotion(); status.textContent = 'Drag or swipe to look around.'; }
     }, true);
-    canvas.addEventListener('wheel', stopMotion, { capture: true, passive: true });
+    canvas.addEventListener('pointerdown', function (event) {
+      pointerStart = { x: event.clientX, y: event.clientY }; pointerDragged = false;
+    });
+    window.addEventListener('pointermove', function (event) {
+      if (pointerStart && Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 4) {
+        pointerDragged = true; hideControls();
+      }
+    });
+    window.addEventListener('pointerup', function () {
+      if (pointerStart && !pointerDragged) showControls();
+      pointerStart = null;
+    });
+    window.addEventListener('pointercancel', function () { pointerStart = null; });
+    canvas.addEventListener('wheel', function () { stopMotion(); hideControls(); }, { capture: true, passive: true });
     document.addEventListener('keydown', function (event) {
-      if (event.key.startsWith('Arrow')) stopMotion();
+      if (event.key.startsWith('Arrow')) { stopMotion(); hideControls(); }
+      if (event.key === 'Tab' || event.key === 'Escape') showControls();
       if (event.key === 'Escape' && glasses) endGlasses();
     }, true);
     document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && glasses) endGlasses(); });
     window.addEventListener('pagehide', stopMotion);
     startMotion(true);
     return {
-      update() { if (enabled && calibrated && !renderer.xr.isPresenting) camera.quaternion.copy(offset).multiply(orientation); },
+      update() {
+        if (enabled && calibrated && !renderer.xr.isPresenting) {
+          const now = performance.now(), blend = 1 - Math.exp(-Math.min((now - lastFrame) / 1000, 0.1) * 18);
+          lastFrame = now;
+          smoothYaw += angleDelta(targetYaw, smoothYaw) * blend;
+          smoothPitch += (targetPitch - smoothPitch) * blend;
+          viewDirection.set(Math.sin(smoothYaw) * Math.cos(smoothPitch), Math.sin(smoothPitch), -Math.cos(smoothYaw) * Math.cos(smoothPitch));
+          camera.up.set(0, 1, 0);
+          camera.lookAt(viewDirection.add(camera.position));
+        }
+      },
       render() {
         if (!glasses) return false;
         camera.updateMatrixWorld(); stereo.update(camera);

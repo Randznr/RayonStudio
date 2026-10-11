@@ -68,3 +68,8 @@ Preview each room, hotspot and alternate style, publish, run **Check live link**
 ## Updated viewer controls
 
 All sample and client viewers omit WhatsApp. A brief fullscreen logo intro fades away. Hotspots use a transparent glowing white ring. Motion starts automatically where browser permissions allow it; other phones require Enable motion. Pointer input, scrolling, and arrow keys switch to manual control. The VR.ic.png glasses icon starts immersive WebXR on supported headsets, or split-screen phone glasses mode otherwise. Select the icon again to exit.
+
+
+### Viewer refinements
+
+Hotspots use a smaller ring with a pulsing glow (disabled for reduced-motion preferences). Phone motion uses smoothed heading and gravity-based elevation to keep the horizon level. Switching alternative panoramas preserves the current direction and zoom. Dragging, scrolling, arrow keys, and gyro movement hide viewer controls and hotspots; tap the panorama or press Tab/Escape to reveal controls. A custom tour logo remains visible. Site WhatsApp links use Images/wa.me.png; viewers continue to omit WhatsApp.

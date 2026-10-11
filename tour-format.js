@@ -9,8 +9,9 @@
     '<style>' +
     'html,body{margin:0;height:100%;background:#1a1815;font-family:Inter,sans-serif;overflow:hidden;}' +
     '#c{width:100%;height:100%;display:block;cursor:grab;touch-action:none;}' +
-    '.hs{position:absolute;transform:translate(-50%,-50%);width:64px;height:44px;border:0;padding:0;background:transparent url(../Images/hotspot-ring.svg) center/contain no-repeat;cursor:pointer;filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #ffffff90);animation:hotspot-glow 2s ease-in-out infinite;}.hs:hover,.hs:focus-visible{filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 18px #fff);outline:2px solid #ffffff80;outline-offset:3px;border-radius:50%;}@keyframes hotspot-glow{50%{filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 16px #ffffffbb);}}@media(prefers-reduced-motion:reduce){.hs{animation:none;}}' +
-    '.glasses-mode .hs,.glasses-mode .strip-wrap,.glasses-mode .btn-show,.glasses-mode .lbl,.glasses-mode #tour-help,.glasses-mode .mm,.glasses-mode .brand,.glasses-mode .variant-switcher{display:none!important}.glasses-mode .tour-motion-controls{top:12px}.glasses-mode .tour-motion-controls> :not(.tour-vr-button){display:none}' +
+    '.hs{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border:0;padding:0;background:transparent url(../Images/hotspot-ring.svg) center/40px 25px no-repeat;cursor:pointer;filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #ffffff90);animation:hotspot-glow 1.8s ease-in-out infinite;}.hs:hover,.hs:focus-visible{filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 18px #fff);outline:2px solid #ffffff80;outline-offset:3px;border-radius:50%;}@keyframes hotspot-glow{0%,100%{filter:drop-shadow(0 0 1px #ffffff70) drop-shadow(0 0 2px #ffffff30);opacity:.7}50%{filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 14px #ffffffdd);opacity:1}}@media(prefers-reduced-motion:reduce){.hs{animation:none;}}' +
+    '.tour-motion-controls,.strip-wrap,.btn-show,.lbl,#tour-help,.mm,.variant-switcher,.hs,.pop{transition:opacity .25s ease,visibility .25s ease}.tour-looking .tour-motion-controls,.tour-looking .strip-wrap,.tour-looking .btn-show,.tour-looking .lbl,.tour-looking #tour-help,.tour-looking .mm,.tour-looking .variant-switcher,.tour-looking .hs,.tour-looking .pop{opacity:0!important;visibility:hidden!important;pointer-events:none!important}' +
+    '.glasses-mode .hs,.glasses-mode .strip-wrap,.glasses-mode .btn-show,.glasses-mode .lbl,.glasses-mode #tour-help,.glasses-mode .mm,.glasses-mode .variant-switcher{display:none!important}.glasses-mode .tour-motion-controls{top:12px!important}.glasses-mode .tour-motion-controls> :not(.tour-vr-button){display:none}' +
     '.lbl{position:absolute;bottom:125px;left:16px;font-family:Fraunces,serif;font-style:italic;color:#faf7f1;background:rgba(34,31,26,.5);padding:7px 14px;border-radius:2px;font-size:16px;}' +
     '.strip-wrap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg, rgba(0,0,0,.8), transparent);padding:20px 10px 10px;transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:10;}' +
     '.strip-wrap.closed{transform:translateY(120%);}' +
@@ -47,7 +48,7 @@
     '.variant-current{margin-top:4px;font-size:9px;color:rgba(255,255,255,0.72);}' +
     '.fade-overlay{position:absolute;inset:0;pointer-events:none;background-size:cover;background-position:center center;opacity:0;transition:opacity .42s ease;}' +
     '.tour-intro{position:fixed;inset:0;z-index:100;background:#f6f3ec;display:grid;place-items:center;pointer-events:none;animation:intro-out .55s ease 1.6s forwards}.tour-intro img{width:min(65vw,420px);max-height:65vh;object-fit:contain}@keyframes intro-out{to{opacity:0;visibility:hidden}}#tour-help{top:auto!important;bottom:165px;margin:0}.credit{display:none}@media(prefers-reduced-motion:reduce){.tour-intro{animation-duration:.01s}}</style></head><body data-tour-viewer><div class="tour-intro" aria-label="Rayon Studio"><img src="../Images/RAYONSLOGO copy.png" alt="Rayon Studio"></div>' +
-    '<p id="tour-help" style="position:absolute;top:12px;left:14px;color:white;z-index:4;font:12px sans-serif;max-width:60%;pointer-events:none;background:rgba(20,25,21,.72);padding:8px 10px;border-radius:4px">Drag to look around. Scroll to zoom. Select a room below.</p><canvas id="c"></canvas><div id="fade" class="fade-overlay"></div><div class="variant-switcher" id="variantSwitcher" style="display:none;text-align:center;"><label id="variantHeader" style="display:block;font-size:10px;margin:0 0 4px;"></label><div class="variant-track"><input id="variantRange" type="range" min="0" max="1" step="1" value="0" style="width:42px; height:10px; appearance:none; -webkit-appearance:none; outline:none; margin:0; pointer-events:none; touch-action:none; border-radius:999px;"></div><div id="variantCurrent" class="variant-current" style="margin-top:4px;font-size:9px;">Original</div></div><div class="lbl" id="lbl"></div>' +
+    '<p id="tour-help" style="position:absolute;top:12px;left:14px;color:white;z-index:4;font:12px sans-serif;max-width:60%;pointer-events:none;background:rgba(20,25,21,.72);padding:8px 10px;border-radius:4px">Drag to look around. Scroll to zoom. Tap the view to show controls.</p><canvas id="c"></canvas><div id="fade" class="fade-overlay"></div><div class="variant-switcher" id="variantSwitcher" style="display:none;text-align:center;"><label id="variantHeader" style="display:block;font-size:10px;margin:0 0 4px;"></label><div class="variant-track"><input id="variantRange" type="range" min="0" max="1" step="1" value="0" style="width:42px; height:10px; appearance:none; -webkit-appearance:none; outline:none; margin:0; pointer-events:none; touch-action:none; border-radius:999px;"></div><div id="variantCurrent" class="variant-current" style="margin-top:4px;font-size:9px;">Original</div></div><div class="lbl" id="lbl"></div>' +
     '<div class="strip-wrap" id="stripWrap"><div class="strip-head"><span>Rooms in this tour</span><button class="btn-hide" id="btnHideRooms">✕ Hide</button></div><div class="strip" id="strip"></div></div><button class="btn-show" id="btnShowRooms">↑ Show rooms</button>' +
     '<div class="mm" id="mm"></div><img class="brand" id="brand">' +
     '<div class="credit">360&deg; walkthrough</div>' +
@@ -80,6 +81,12 @@
         brandEl.style.maxWidth = (data.branding.scale*100)+'%';
         brandEl.style.maxHeight = (data.branding.scale*130)+'%';
         brandEl.className = 'brand show ' + (posMap[data.branding.position]||'tr');
+        if (data.branding.position === 'top-left') {
+          function placeVariantBelowLogo() { document.getElementById('variantSwitcher').style.top = (brandEl.getBoundingClientRect().bottom + 12) + 'px'; }
+          brandEl.addEventListener('load', placeVariantBelowLogo);
+          window.addEventListener('resize', placeVariantBelowLogo);
+          if (brandEl.complete) placeVariantBelowLogo();
+        }
       }
 
       // minimap
@@ -128,23 +135,26 @@
         onNextRoom: function() { loadScene((cur + 1) % scenes.length); }
       }) : null;
       var loadVersion = 0;
-      function loadScene(i){
-        if (controls) controls.reset();
+      function loadScene(i, preserveView){
+        if (controls && !preserveView) controls.reset();
         var version=++loadVersion;
         document.querySelectorAll('.hs,.pop').forEach(function(node){node.remove();});
         document.getElementById('tour-help').textContent='Loading room…';
         cur = i; 
         var s = scenes[i];
-        lon = s.initialLon !== undefined ? s.initialLon : -90; 
-        lat = s.initialLat !== undefined ? s.initialLat : 0; 
-        fov = 78;
+        if (!preserveView) {
+          lon = s.initialLon !== undefined ? s.initialLon : -90;
+          lat = s.initialLat !== undefined ? s.initialLat : 0;
+          fov = 78;
+        }
         var src = (s.alt && s.alt.active && s.alt.image) ? s.alt.image : s.image;
-        if(fadeEl){
+        if(fadeEl && !preserveView){
           var oldSrc = sphere.material.map && sphere.material.map.image ? sphere.material.map.image.currentSrc || sphere.material.map.image.src : '';
           if(oldSrc) fadeEl.style.backgroundImage = 'url(' + oldSrc + ')';
           else fadeEl.style.backgroundImage = '';
           fadeEl.style.opacity = '1';
         }
+        if (fadeEl && preserveView) fadeEl.style.opacity = '0';
         var loader = new THREE.TextureLoader();
         loader.load(src, function(tex){
           if(version!==loadVersion){tex.dispose();return;}
@@ -152,7 +162,7 @@
           sphere.material.map = tex;
           sphere.material.color.set(0xffffff);
           sphere.material.needsUpdate = true;
-          document.getElementById('tour-help').textContent='Drag to look around. Scroll to zoom. Select a room below.';
+          document.getElementById('tour-help').textContent='Drag to look around. Scroll to zoom. Tap the view to show controls.';
           if(fadeEl){ requestAnimationFrame(function(){ fadeEl.style.opacity = '0'; }); }
         }, undefined, function(){if(version===loadVersion){document.getElementById('tour-help').textContent='This room could not load. Select another room or refresh to try again.';if(fadeEl)fadeEl.style.opacity='0';}});
         document.getElementById('lbl').textContent = s.name;
@@ -193,7 +203,7 @@
         if(!s || !s.alt || !s.alt.image) return;
         s.alt.active = this.value === '1';
         document.getElementById('variantCurrent').textContent = s.alt.active ? (s.alt.labelB || 'Alternate') : (s.alt.labelA || 'Original');
-        loadScene(cur);
+        loadScene(cur, true);
       });
       variantRange.style.pointerEvents = 'none';
       variantRange.style.touchAction = 'none';
