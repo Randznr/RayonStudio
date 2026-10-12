@@ -1,0 +1,8 @@
+project_id = "rayon-studio"
+
+[functions.tour-view]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/tour-view/index.ts"
+# UUID client links are viewing capabilities, checked against publication/expiry
+# on the server. This function never exposes catalog or administrative operations.
