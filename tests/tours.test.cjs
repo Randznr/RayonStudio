@@ -31,10 +31,12 @@ test('public routes point to the sample and never load the editor',()=>{
   for(const file of ['virtual-tours-landing.html','RayonS360_sample_final.html','tours/RayonS360_final.html']){
     const html=fs.readFileSync(path.join(root,file),'utf8');assert.match(html,/sample.html/);assert.doesNotMatch(html,/tour-editor|btnNewScene|btnEditMode|tour-admin/);
   }
-  assert.equal(context.TourData.parse(fs.readFileSync(path.join(root,'tours/sample.html'),'utf8')).scenes.length,2);
+  const sample=fs.readFileSync(path.join(root,'tours/sample.html'),'utf8');
+  assert.match(sample,/tour-cloud-view.js/);assert.doesNotMatch(sample,/tour-editor|btnNewScene|id="data"/);
+  assert.equal(context.TourData.parse(fs.readFileSync(path.join(root,'tours/sample-source.json'),'utf8')).scenes.length,2);
 });
 test('admin editor and authored JavaScript compile',()=>{
-  for(const file of ['tour-admin.js','tour-data.js','tour-format.js'])new vm.Script(fs.readFileSync(path.join(root,file),'utf8'));
+  for(const file of ['tour-admin.js','tour-data.js','tour-format.js','tour-offline.js','tour-efficiency.js','tour-cloud-view.js'])new vm.Script(fs.readFileSync(path.join(root,file),'utf8'));
   const editor=fs.readFileSync(path.join(root,'tour-editor.html'),'utf8');
   for(const script of editor.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(script[1]);
   assert.match(editor,/window.TourEditor/);assert.doesNotMatch(editor,/window.storage/);

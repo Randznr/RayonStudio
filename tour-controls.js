@@ -1,7 +1,7 @@
 ﻿/* Shared automatic motion, headset WebXR and phone glasses controls. */
 (function () {
   'use strict';
-  const assetBase = new URL('Images/', document.currentScript.src);
+  const assetBase = new URL('Images/', document.currentScript.src || location.href);
   window.RayonTourControls = function ({ renderer, camera, scene, canvas, onManual, onNextRoom }) {
     const panel = document.createElement('div');
     panel.className = 'tour-motion-controls';
@@ -130,7 +130,7 @@
     });
     vr.className = 'tour-vr-button';
     const icon = document.createElement('img');
-    icon.src = new URL('VR.ic.png', assetBase).href; icon.alt = ''; icon.style.cssText = 'display:block;width:36px;height:36px;object-fit:contain';
+    icon.src = window.RayonOfflineAssets?.vr || new URL('VR.ic.png', assetBase).href; icon.alt = ''; icon.style.cssText = 'display:block;width:36px;height:36px;object-fit:contain';
     vr.appendChild(icon); vrLabel('Enter VR'); vr.disabled = true;
     panel.appendChild(status); document.body.appendChild(panel);
     if (window.isSecureContext && navigator.xr) {

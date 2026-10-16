@@ -73,16 +73,18 @@
   function safeThumbnail(value) {return typeof value==='string'&&value.length<150000&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value);}
   function renderList() {
     const generation=++galleryGeneration, gallery=$('#tour-gallery');gallery.replaceChildren();
-    const tours=[...catalog.tours];
+    let tours=[...catalog.tours];
     if(active&&!tours.some(t=>t.id===active.id))tours.push({...active,title:$('#tour-title').value||active.title,draft:true});
-    if(!tours.length){const empty=document.createElement('p');empty.className='tour-gallery-empty';empty.textContent='No tours yet. Create your first client tour.';gallery.append(empty);}
+    const filter=$('#tour-search')?.value.trim().toLowerCase();
+    if(filter)tours=tours.filter(t=>t.title.toLowerCase().includes(filter));
+    if(!tours.length){const empty=document.createElement('p');empty.className='tour-gallery-empty';empty.textContent=filter?'No tours match this search.':'No tours yet. Create your first client tour.';gallery.append(empty);}
     const missing=[];
     for(const tour of tours) {
       const card=document.createElement('article');card.className='tour-card'+(active?.id===tour.id?' is-active':'');card.dataset.tourId=tour.id;
       const preview=document.createElement('button');preview.type='button';preview.dataset.action='open';preview.className='tour-card-preview';preview.setAttribute('aria-label','Open '+tour.title);preview.disabled=busy||editorBusy;preview.textContent='Preview loading...';
       const showPreview=src=>{preview.replaceChildren();if(src){const img=document.createElement('img');img.src=src;img.alt='Preview of '+tour.title;preview.append(img);}else preview.textContent='Add a panorama to create a preview';};
       const cached=previews.get(previewKey(tour)),src=safeThumbnail(tour.thumbnail)?tour.thumbnail:cached;
-      if(src)showPreview(src);else if(tour.draft)showPreview(null);else missing.push({tour,showPreview});
+      if(src)showPreview(src);else if(tour.draft||cloud)showPreview(null);else missing.push({tour,showPreview});
       const body=document.createElement('div');body.className='tour-card-body';
       const state=document.createElement('div');state.className='tour-card-state';
       const expired=tour.expiresAt&&Date.parse(tour.expiresAt)<=Date.now();
@@ -218,7 +220,27 @@
     catch(error){status(error.message);}finally{$('#tour-import').value='';lock(false);}
   };
   function download(content,name,type) {const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  $('#tour-backup').onclick=()=>{try{download(JSON.stringify(currentPayload()),'rayon-tour-backup.json','application/json');}catch(error){status(error.message);}};
+  function deliveryName(suffix){return ($('#tour-title').value||'rayon-tour').replace(/[^a-z0-9_-]+/gi,'-').slice(0,60)+'-'+(active?.id||'draft')+'-'+suffix;}
+  function sizeReport(payload){
+    const bytes=TourEfficiency.bytes(payload);
+    $('#tour-size-report').textContent=payload.scenes.length+' rooms · '+TourEfficiency.mb(bytes)+' saved tour. Planning allowance: about '+TourEfficiency.mb(bytes*2)+' backend traffic per full online opening, before overhead; actual usage varies. '+(bytes>40*1024*1024?'Above the 40 MB publish limit.':bytes>10*1024*1024?'Consider Smaller files for mobile delivery.':'Within the suggested 10 MB pilot target.');
+  }
+  $('#tour-search').oninput=renderList;
+  $('#tour-size').onclick=()=>{try{sizeReport(currentPayload());}catch(error){status(error.message);}};
+  $('#tour-optimize').onclick=async()=>{
+    if(!confirm('Optimize this draft? Image detail may be reduced. Keep an original backup first. Nothing is published until you choose Publish tour.'))return;
+    lock(true);
+    try{
+      const result=await TourEfficiency.optimize(currentPayload(),$('#tour-quality').value,(i,n)=>status('Optimizing room '+i+' of '+n+'…'));
+      await editor().load(result.payload);changed();sizeReport(result.payload);
+      status('Draft optimized: '+TourEfficiency.mb(result.before)+' → '+TourEfficiency.mb(result.after)+'. Preview every room and alternate before publishing.');
+    }catch(error){status(error.message);}finally{lock(false);}
+  };
+  $('#tour-offline-export').onclick=async()=>{
+    lock(true);try{const payload=currentPayload();const html=await TourOffline.build(payload);download(html,deliveryName('offline.html'),'text/html');status('Offline viewer downloaded ('+TourEfficiency.mb(new Blob([html]).size)+'). Test it with the internet disconnected before delivery.');}
+    catch(error){status(error.message);}finally{lock(false);}
+  };
+  $('#tour-backup').onclick=()=>{try{download(JSON.stringify(currentPayload()),deliveryName('backup.json'),'application/json');}catch(error){status(error.message);}};
   $('#tour-preview').onclick=()=>{
     try{const payload=currentPayload();if(!payload.scenes.length)throw new Error('Add a panorama first.');const html=TourFormat.build(payload);$('#tour-preview-frame').srcdoc=html.replace('<head>','<head><base href="'+new URL('tours/',location.href).href+'">');$('#tour-preview-dialog').showModal();}catch(error){status(error.message);}
   };

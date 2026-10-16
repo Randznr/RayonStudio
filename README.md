@@ -2,6 +2,8 @@ SUPABASE UPDATE — 16 October 2026: Tours now use email/password sign-in and pr
 
 # RAYONS Studio website
 
+For the current tour system and launch plan, start with [Pilot roadmap and operating guide](PILOT-ROADMAP.md). It covers online/offline delivery, efficiency controls, capacity limits and the first-client checklist. The legacy tour instructions below are retained for reference.
+
 Open this folder in Visual Studio using **File → Open → Folder**, or in Visual Studio Code. This is a static HTML/CSS/JavaScript website with no build step, package installation, or framework required. Open `index.html` in a browser to preview it. For hosting, upload the entire folder to a static web host.
 
 ## Pages

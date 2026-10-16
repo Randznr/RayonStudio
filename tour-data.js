@@ -10,6 +10,7 @@
     for (const scene of data.scenes) {
       if (!scene || !/^[\w-]{1,100}$/.test(scene.id) || ids.has(scene.id) || typeof scene.name !== 'string' || !scene.image || !image(scene.image)) throw new Error('A room has invalid data or an unsupported image. Import a self-contained RAYON tour.');
       ids.add(scene.id);
+      if (scene.thumbnail && (!image(scene.thumbnail) || scene.thumbnail.length > 150000)) throw new Error('Invalid room thumbnail.');
       if (scene.alt && !image(scene.alt.image)) throw new Error('Invalid alternate panorama.');
       for (const key of ['initialLon','initialLat','mapX','mapY','mapHeading']) if (scene[key] != null && !Number.isFinite(scene[key])) throw new Error('Invalid room position.');
       if (scene.hotspots != null && !Array.isArray(scene.hotspots)) throw new Error('Invalid hotspots.');

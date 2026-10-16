@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta name="robots" content="noindex,nofollow"><script>if(window.parent===window)location.replace("tour-admin.html");</script><script src="tour-data.js?v=launch1"></script><script src="tour-format.js?v=motion1"></script>
+<head><meta name="robots" content="noindex,nofollow"><script>if(window.parent===window)location.replace("tour-admin.html");</script><script src="tour-data.js?v=pilot2"></script><script src="tour-format.js?v=pilot2"></script><script src="tour-offline.js?v=pilot2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Rayon Studio — 360° walkthroughs for interior staging</title>
@@ -1907,10 +1907,14 @@
   });
 
   /* ============ export standalone viewer ============ */
-  function exportStandaloneTour(){
+  async function exportStandaloneTour(){
+    if(window.parent!==window && window.parent.document.querySelector('#tour-offline-export')){
+      window.parent.document.querySelector('#tour-offline-export').click();return;
+    }
+    try {
     const payload = {
       scenes: state.scenes.map(s=>({
-        id:s.id, name:s.name, image:s.image, hotspots:s.hotspots||[],
+        id:s.id, name:s.name, image:s.image, thumbnail:s.thumbnail, hotspots:s.hotspots||[],
         mapX:s.mapX, mapY:s.mapY, mapHeading:s.mapHeading||0,
         initialLon: s.initialLon !== undefined ? s.initialLon : -90,
         initialLat: s.initialLat !== undefined ? s.initialLat : 0,
@@ -1920,7 +1924,7 @@
       branding: state.tour.branding || null
     };
     const json = JSON.stringify(payload).replace(/<\/script/gi, '<\\/script');
-    const html = TourFormat.build(payload);
+    const html = await TourOffline.build(payload);
     const blob = new Blob([html], { type:'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1930,6 +1934,7 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    } catch(error) { alert(error.message || "Offline export failed. Your draft is unchanged."); }
   }
 
   /* ============ boot ============ */
@@ -1962,7 +1967,7 @@
   replacement.onchange = async () => {
     const sc = currentScene(), file = replacement.files[0]; if (!sc || !file) return;
     window.parent.postMessage({type:'rayon-editor-busy',busy:true},location.origin);
-    try { await checkPanorama(file); sc.image = await fileToCompressedDataURL(file); await persistScene(sc); setTextureForCurrentScene(); renderStrip(); }
+    try { await checkPanorama(file); sc.image = await fileToCompressedDataURL(file); delete sc.thumbnail; await persistScene(sc); setTextureForCurrentScene(); renderStrip(); }
     catch(error) { alert(error.message || 'The panorama could not be read.'); }
     replacement.value = '';
     window.parent.postMessage({type:'rayon-editor-busy',busy:false},location.origin);

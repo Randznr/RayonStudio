@@ -220,7 +220,7 @@
         scenes.forEach(function(s,i){
           var d = document.createElement('button');d.type='button';d.title=s.name;d.setAttribute('aria-label','View '+s.name);d.setAttribute('aria-pressed',String(i===cur));d.style.padding='0';
           d.className = 'sw'+(i===cur?' on':'');
-          d.innerHTML = '<img src="'+s.image+'">';
+          d.innerHTML = '<img loading="lazy" decoding="async" src="'+(s.thumbnail||s.image)+'">';
           d.addEventListener('click', function(){ loadScene(i); });
           strip.appendChild(d);
         });
@@ -264,7 +264,7 @@
         var ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera);
       }
       function animate(){
-        if (expired) return;
+        if (expired || document.hidden) return;
         updateRoomTransition(performance.now());
 
         var phi = THREE.MathUtils.degToRad(90-lat), theta = THREE.MathUtils.degToRad(lon);

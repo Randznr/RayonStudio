@@ -7,6 +7,8 @@ const {chromium}=require(process.env.RAYON_PLAYWRIGHT),assert=require('node:asse
   await page.goto(base+'tour-admin.html');
   await page.getByRole('heading',{name:'Studio sign in'}).waitFor();
   assert.equal(await page.locator('#tour-email').inputValue(),'randall@rayonstudio.net');
+  assert.equal(await page.locator('#tour-offline-export').count(),1);
+  assert.equal(await page.locator('#tour-optimize').count(),1);
   for(const path of ['tours/sample.html','tours/client-665f1be8-530a-461a-aacb-606fc3b16f13.html']) {
    await page.goto(base+path);
    await page.frameLocator('#cloud-view').locator('.sw').nth(1).waitFor({timeout:60000});

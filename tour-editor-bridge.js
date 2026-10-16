@@ -23,7 +23,7 @@
   replaceButton.onclick = () => { if (currentScene()) replacement.click(); else alert('Add a room first.'); };
   replacement.onchange = async () => {
     const sc = currentScene(), file = replacement.files[0]; if (!sc || !file) return;
-    try { sc.image = await fileToCompressedDataURL(file); await persistScene(sc); setTextureForCurrentScene(); renderStrip(); }
+    try { sc.image = await fileToCompressedDataURL(file); delete sc.thumbnail; await persistScene(sc); setTextureForCurrentScene(); renderStrip(); }
     catch(error) { alert(error.message || 'The panorama could not be read.'); }
     replacement.value = '';
   };
