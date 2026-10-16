@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const $ = id => document.querySelector(id), encoder = new TextEncoder();
+  const $ = id => document.querySelector(id), encoder = new TextEncoder(), cloud=window.TourCloud;
   let token = '', repo = '', branch = '', head = '', tree = '', catalog = {tours:[]}, active = null, dirty = false, busy = false, qrURL = '';
   let editorBusy = false, liveGeneration = 0;
   const scope = () => repo + ':' + branch;
@@ -25,6 +25,7 @@
   }
   function decode(content) { return new TextDecoder().decode(Uint8Array.from(atob(content.replace(/\s/g,'')),char=>char.charCodeAt(0))); }
   async function read(path) {
+    if(cloud){const id=path.includes('/data/')?path.split('/').pop().replace('.json',''):path.split('/').pop().replace(/^client-/,'').replace('.html','');return JSON.stringify(await cloud.read(id));}
     const file=await api('/contents/'+path+'?ref='+head);
     return decode(file.content || (await api('/git/blobs/'+file.sha)).content);
   }
@@ -116,9 +117,10 @@
   };
   async function deleteTour(id) {
     const target=catalog.tours.find(t=>t.id===id);if(!target)return;
-    const warning='Delete "'+target.title+'"? This removes its published viewer and editable project from the current repository. Its link stops working after deployment. Download a backup first if you need it. Git history and existing downloads are retained.'+(id==='sample'?' The public sample link on your website will also stop working.':'')+(active?.id===id&&dirty?' Unpublished edits to this tour will also be discarded.':'');
+    const warning=cloud?'Delete "'+target.title+'"? Its viewing link will stop working. Download a backup first if needed. Browser drafts and previous downloads are retained.':'Delete "'+target.title+'"? This removes its published viewer and editable project from the current repository. Its link stops working after deployment. Download a backup first if you need it. Git history and existing downloads are retained.'+(id==='sample'?' The public sample link on your website will also stop working.':'')+(active?.id===id&&dirty?' Unpublished edits to this tour will also be discarded.':'');
     if(!confirm(warning))return;
     lock(true);try{
+      if(cloud){const cleaned=await cloud.remove(target);catalog.tours=catalog.tours.filter(t=>t.id!==id);if(active?.id===id){dirty=false;active=null;await newTour();dirty=false;}renderList();share();status(cleaned?'Tour deleted. Its link is now unavailable.':'Tour link disabled and project deleted. An unused private storage file could not be cleaned up.');return;}
       if((await api('/git/ref/heads/'+encodeURIComponent(branch))).object.sha!==head)throw new Error('The repository changed. Save a draft or backup and sign in again.');
       const nextCatalog={...catalog,tours:catalog.tours.filter(t=>t.id!==id)};
       const entries=[{path:TourData.path(id),mode:'100644',type:'blob',sha:null}];
@@ -157,20 +159,20 @@
     status(next.id==='sample'?'Editing the public sample. Changes appear for everyone after publishing.':'Editing a client tour. Its viewing link remains unchanged when you publish.');
   }
   $('#tour-login').onsubmit=async event=>{
-    event.preventDefault();lock(true);status('Connecting…');token=$('#tour-token').value.trim();$('#tour-token').value='';repo=$('#tour-repo').value.trim();branch=$('#tour-branch').value.trim();
+    event.preventDefault();lock(true);status('Signing in…');
     try {
-      const repository=await api('');if(!repository.permissions?.push) throw new Error('Your GitHub account needs write access.');
-      head=(await api('/git/ref/heads/'+encodeURIComponent(branch))).object.sha;tree=(await api('/git/commits/'+head)).tree.sha;
-      catalog=validCatalog(JSON.parse(await read('tours/catalog.json')));
+      catalog=validCatalog(await cloud.signIn($('#tour-email').value.trim(),$('#tour-password').value));
+      $('#tour-password').value='';token='supabase-session';repo='supabase';branch=RayonCloudConfig.url;
       await connectEditor();$('#tour-workspace').hidden=false;$('#tour-login').hidden=true;
-      const local=['localhost','127.0.0.1',''].includes(location.hostname);
-      if(!local) $('#tour-site').value=new URL('./',location.href).href;
-      else $('#tour-site').value='https://'+repo.split('/')[0]+'.github.io/'+(repo.split('/')[1].toLowerCase()===repo.split('/')[0].toLowerCase()+'.github.io'?'':repo.split('/')[1]+'/');
-      await load(catalog.tours[0]?.id);
-      if(!active) await newTour();
-      await refreshDrafts();
-    } catch(error) {token='';$('#tour-workspace').hidden=true;$('#tour-login').hidden=false;$('#tour-editor').removeAttribute('src');status(error.message);}
-    finally{lock(false);}
+      if(!['localhost','127.0.0.1',''].includes(location.hostname))$('#tour-site').value=new URL('./',location.href).href;
+      await load(catalog.tours[0]?.id);if(!active)await newTour();await refreshDrafts();
+    }catch(error){token='';$('#tour-workspace').hidden=true;$('#tour-login').hidden=false;$('#tour-editor').removeAttribute('src');status(error.message);}
+    finally{$('#tour-password').value='';lock(false);}
+  };
+  $('#tour-create-account').onclick=async()=>{
+    if(!$('#tour-login').reportValidity())return;
+    lock(true);try{await cloud.signUp($('#tour-email').value.trim(),$('#tour-password').value);status('Check your email to confirm your account, then return here and sign in with your password. If the confirmation opens an unavailable page, return here after confirming.');}
+    catch(error){status(error.message);}finally{$('#tour-password').value='';lock(false);}
   };
   async function newTour(){
     if(dirty&&!confirm('Discard unpublished changes and start a new client tour?'))return;
@@ -178,12 +180,6 @@
     await editor().load({scenes:[],floorplan:null,branding:null});$('#tour-title').value=active.title;setExpiry(null);renderList();share();changed();
   }
   $('#tour-new').onclick=newTour;
-  $('#tour-update-token').onclick=async()=>{
-    const replacement=$('#tour-replacement-token').value.trim();if(!replacement){status('Enter the replacement token first.');return;}
-    const previous=token;lock(true);token=replacement;$('#tour-replacement-token').value='';
-    try{const repository=await api('');if(!repository.permissions?.push)throw new Error('Your GitHub account needs write access.');status('Token replaced. Your draft is unchanged. Try Publish tour again to verify write access.');}
-    catch(error){token=previous;status(error.message);}finally{lock(false);}
-  };
   $('#tour-title').oninput=changed;
   window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===$('#tour-editor').contentWindow&&event.data?.type==='rayon-tour-changed'&&token&&!busy)changed();});
   window.addEventListener('message',event=>{
@@ -236,6 +232,7 @@
       const payload=editor().getData();if(!payload.scenes.length)throw new Error('Add at least one panorama before publishing.');
       payload.title=title;payload.revision=crypto.randomUUID();payload.expiresAt=getExpiry(true);
       const cover=await thumbnail(payload.scenes[0].image);
+      if(cloud){const next=await cloud.publish(active,payload,cover);catalog.tours=catalog.tours.filter(t=>t.id!==next.id).concat(next);active=next;dirty=false;setExpiry(next.expiresAt);renderList();share();status('Tour published. Its viewing link is live now.');return;}
       const html=TourFormat.build(payload);if(encoder.encode(html).length>40*1024*1024)throw new Error('This tour exceeds 40 MB. Reduce the number or size of the panoramas.');
       if((await api('/git/ref/heads/'+encodeURIComponent(branch))).object.sha!==head)throw new Error('The repository changed since sign-in. Download your draft backup, sign in again, and import the backup before publishing.');
       const next={id:active.id,title,revision:payload.revision,hasSource:true,published:true,updatedAt:new Date().toISOString(),rooms:payload.scenes.length,expiresAt:payload.expiresAt,thumbnail:cover};const nextCatalog={tours:catalog.tours.filter(tour=>tour.id!==next.id).concat(next)};
@@ -255,7 +252,7 @@
     $('#tour-qr').replaceChildren();$('#tour-link').value='';$('#tour-open').removeAttribute('href');$('#tour-qr-download').removeAttribute('href');if(qrURL){URL.revokeObjectURL(qrURL);qrURL='';}
     try{
       const base=new URL($('#tour-site').value);if(base.protocol!=='https:')throw new Error();base.hash='';base.search='';if(!base.pathname.endsWith('/'))base.pathname+='/';
-      const url=new URL(TourData.path(active.id),base).href;
+      const url=new URL(cloud?cloud.link(active.id):TourData.path(active.id),base).href;
       const qr=qrcode(0,'M');qr.addData(url);qr.make();const svg=qr.createSvgTag({cellSize:6,margin:24,scalable:true});
       $('#tour-link').value=url;$('#tour-open').href=url;$('#tour-qr').innerHTML=svg;qrURL=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));$('#tour-qr-download').href=qrURL;
     }catch{status('Enter the full HTTPS address of your live website to create its link and QR code.');}
@@ -266,6 +263,7 @@
     if(active.expiresAt&&Date.parse(active.expiresAt)<=Date.now()){$('#tour-live-status').textContent='This tour has expired. Extend its availability and publish before sharing.';return;}
     $('#tour-check-live').disabled=true;$('#tour-live-status').textContent='Checking the deployed viewer…';
     try{
+      if(cloud){await cloud.check(active.id,active.revision);if(generation===liveGeneration)$('#tour-live-status').textContent='Ready to share — the latest published tour is live.';return;}
       const response=await fetch(url+'?verify='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});
       if(!response.ok)throw new Error('Not live yet (HTTP '+response.status+'). Wait for GitHub Pages and check again.');
       const html=await response.text();
@@ -276,8 +274,9 @@
   };
   $('#tour-offline').onclick=async()=>{
     if(!active||active.id==='sample'||!active.hasSource||busy||editorBusy)return;
-    if(!confirm('Take this client tour offline? Its link will show an unavailable page after deployment. Editable project data is retained. Unpublished edits are not included.'))return;
+    if(!confirm('Take this client tour offline? New views will be blocked immediately. Open viewers close at their next availability check. Editable project data is retained.'))return;
     lock(true);try{
+      if(cloud){active=await cloud.offline(active);catalog.tours=catalog.tours.map(t=>t.id===active.id?active:t);renderList();share();status('Tour taken offline. Publish to reopen the same link.');return;}
       if((await api('/git/ref/heads/'+encodeURIComponent(branch))).object.sha!==head)throw new Error('The repository changed. Save a draft or backup and sign in again.');
       const next={...active,published:false,updatedAt:new Date().toISOString()};
       const nextCatalog={tours:catalog.tours.map(t=>t.id===next.id?next:t)};
@@ -289,6 +288,6 @@
     }catch(error){status(error.message);}finally{lock(false);}
   };
   $('#tour-copy').onclick=async()=>{try{if(!$('#tour-link').value)return;await navigator.clipboard.writeText($('#tour-link').value);status('Tour link copied.');}catch{status('Select the viewing link and copy it manually.');}};
-  $('#tour-logout').onclick=()=>{if(dirty&&!confirm('Discard unpublished changes and sign out?'))return;token='';galleryGeneration++;previews.clear();$('#tour-gallery').replaceChildren();dirty=false;active=null;catalog={tours:[]};$('#tour-editor').removeAttribute('src');$('#tour-workspace').hidden=true;$('#tour-login').hidden=false;if(qrURL)URL.revokeObjectURL(qrURL);status('Signed out.');};
+  $('#tour-logout').onclick=async()=>{if(dirty&&!confirm('Discard unpublished changes and sign out?'))return;try{await cloud.signOut();}catch{}token='';galleryGeneration++;previews.clear();$('#tour-gallery').replaceChildren();dirty=false;active=null;catalog={tours:[]};$('#tour-editor').removeAttribute('src');$('#tour-workspace').hidden=true;$('#tour-login').hidden=false;if(qrURL)URL.revokeObjectURL(qrURL);status('Signed out.');};
   window.addEventListener('beforeunload',event=>{if(dirty||busy||editorBusy){event.preventDefault();event.returnValue='';}});
 })();

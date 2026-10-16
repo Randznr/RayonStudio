@@ -1,3 +1,5 @@
+SUPABASE UPDATE — 16 October 2026: Tours now use email/password sign-in and private Supabase storage. Open tour-admin.html to create the studio account, confirm its email, and sign in. Tour publishing is immediate; the GitHub tour publishing instructions below describe the previous implementation. Album publishing still uses GitHub. See backend/SETUP-STATUS.md for current deployment details.
+
 # Album and virtual tour publishing on GitHub Pages
 
 Repository: **Randznr/RayonStudio**, branch: **main**.

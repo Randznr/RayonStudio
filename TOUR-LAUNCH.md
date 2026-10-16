@@ -1,3 +1,5 @@
+SUPABASE UPDATE — 16 October 2026: Tours now use email/password sign-in and private Supabase storage. Open tour-admin.html to create the studio account, confirm its email, and sign in. Tour publishing is immediate; the GitHub tour publishing instructions below describe the previous implementation. Album publishing still uses GitHub. See backend/SETUP-STATUS.md for current deployment details.
+
 # Virtual tour publishing — Rayon Studio
 
 **Admin:** https://randznr.github.io/RayonStudio/tour-admin.html  
@@ -54,20 +56,15 @@ This is a GitHub Pages site: GitHub's API is the authenticated publishing/storag
 
 ### Looking around and VR
 
-Visitors can drag with a mouse, swipe on a touchscreen, or select **Enable motion** and grant sensor permission to look around by moving their phone. Dragging switches back to manual control. Motion controls require HTTPS and a device/browser that supplies orientation data. Permission denial or missing sensors leaves manual controls available.
+Motion starts automatically on phones whose browsers allow sensor access without a prompt. On permission-gated phones, select **Enable motion** once to grant access. Mouse/touch input, scrolling, or arrow keys switches to manual control. Motion controls require HTTPS and a device/browser that supplies orientation data. Permission denial or missing sensors leaves manual controls available.
 
-**Enter VR** starts an immersive WebXR session on a supported headset/browser over HTTPS. Each eye is rendered through Three.js WebXR with headset tracking. A controller trigger advances to the next room; exit with the headset's system menu or **Exit VR**. The button shows **VR unavailable** when the browser cannot offer an immersive session. Ordinary photos remain panoramas rather than reconstructed 3D spaces. Physical headset and phone checks are required before promising compatibility with a particular device.
+**Enter VR** starts an immersive WebXR session on a supported headset/browser over HTTPS. Each eye is rendered through Three.js WebXR with headset tracking. A controller trigger advances to the next room; exit with the headset's system menu or **Exit VR**. The glasses icon uses `Images/VR.ic.png`. When immersive WebXR is unavailable, it opens a split-screen phone glasses view, with optional fullscreen and motion tracking. Select the icon again to exit. Ordinary photos remain panoramas rather than reconstructed 3D spaces. Physical headset and phone checks are required before promising compatibility with a particular device.
 
 The controls are available in client preview, the public sample, and generated client tours. After changing the viewer generator, run `node tools/refresh-viewers.cjs` to upgrade existing active viewers while retaining their tour data. Offline notices are left intact.
 
-The shared `site-features.js` adds the WhatsApp link for +267 74074086 and suppresses the context menu and image dragging. This discourages casual copying; it does not prevent downloading content, taking screenshots, or inspecting source.
+The shared `site-features.js` adds the WhatsApp link for +267 74074086 on ordinary site pages; all panorama viewers omit it. Viewer hotspots use a transparent white elliptical ring with a soft glow, and the studio logo appears only in a brief fullscreen intro. The script also suppresses the context menu and image dragging. This discourages casual copying; it does not prevent downloading content, taking screenshots, or inspecting source.
 
 Preview each room, hotspot and alternate style, publish, run **Check live link**, and open the viewing URL on a phone or a signed-out browser. Scan the QR with a phone camera. Back up the editable project. The sample is an illustrative demo; replace it with approved portfolio panoramas when ready.
-
-
-## Updated viewer controls
-
-All sample and client viewers omit WhatsApp. A brief fullscreen logo intro fades away. Hotspots use a transparent glowing white ring. Motion starts automatically where browser permissions allow it; other phones require Enable motion. Pointer input, scrolling, and arrow keys switch to manual control. The VR.ic.png glasses icon starts immersive WebXR on supported headsets, or split-screen phone glasses mode otherwise. Select the icon again to exit.
 
 
 ### Viewer refinements
